@@ -1,22 +1,12 @@
-FROM eclipse-temurin:17-jdk AS build
+FROM maven:3.8-openjdk-17 AS build
 WORKDIR /app
 
-# Copier le wrapper Maven
-COPY Back_end/.mvn .mvn
-COPY Back_end/mvnw Back_end/mvnw.cmd .
+# Copier le pom.xml et le code source
 COPY Back_end/pom.xml .
-
-# Rendre le wrapper exécutable
-RUN chmod +x mvnw
-
-# Télécharger les dépendances
-RUN ./mvnw dependency:go-offline -B
-
-# Copier le code source
 COPY Back_end/src ./src
 
-# Construire l'application
-RUN ./mvnw clean package -DskipTests
+# Télécharger les dépendances et construire
+RUN mvn clean package -DskipTests
 
 # Étape 2 : Image d'exécution
 FROM eclipse-temurin:17-jre
