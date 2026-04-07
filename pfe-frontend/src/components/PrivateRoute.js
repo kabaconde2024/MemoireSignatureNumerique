@@ -1,7 +1,8 @@
 import React, { useEffect, useState } from 'react';
 import { Navigate } from 'react-router-dom';
-import API from '../api'; // ⚠️ Changé de '../services/api' vers '../api' (selon votre structure)
 import { CircularProgress, Box } from '@mui/material';
+import API from '../services/api';  // ✅ Chemin CORRECT
+
 
 const PrivateRoute = ({ children, allowedRoles }) => {
     const [isAuthorized, setIsAuthorized] = useState(null);
