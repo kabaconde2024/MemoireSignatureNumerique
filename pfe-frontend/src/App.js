@@ -1,4 +1,3 @@
-// App.js - Version corrigée avec les deux routes
 import React from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { ThemeProvider, createTheme, CssBaseline } from '@mui/material';
@@ -18,15 +17,18 @@ import SuperAdminDashboard from './pages/SuperAdminDashboard';
 import SignatureSimplePage from './pages/Simple/SignatureSimplePage';
 import SignaturePkiPage from './pages/Pki/SignaturePkiPage';
 
-
-
+// Thème Material-UI
 const theme = createTheme({
   palette: {
     primary: { main: '#1E293B' },
     secondary: { main: '#2563EB' },
     background: { default: '#F8FAFC' }
   },
-  typography: { fontFamily: '"Inter", "Roboto", sans-serif', h4: { fontWeight: 800 }, h5: { fontWeight: 700 } },
+  typography: { 
+    fontFamily: '"Inter", "Roboto", sans-serif', 
+    h4: { fontWeight: 800 }, 
+    h5: { fontWeight: 700 } 
+  },
   shape: { borderRadius: 8 }
 });
 
@@ -36,20 +38,46 @@ function App() {
       <CssBaseline />
       <Router>
         <Routes>
+          {/* Routes publiques */}
           <Route path="/" element={<Home />} />
-          <Route path="/connexion" element={<AuthLayout title="Connexion"><Connexion /></AuthLayout>} />
-          <Route path="/inscription" element={<AuthLayout title="Créer un compte"><DemandeInscription /></AuthLayout>} />
-          <Route path="/finaliser-inscription" element={<AuthLayout title="Compléter mon profil"><Inscription /></AuthLayout>} />
-          <Route path="/mot-de-passe-oublie" element={<AuthLayout title="Mot de passe oublié"><MotDePasseOublie /></AuthLayout>} />
+          <Route path="/connexion" element={
+            <AuthLayout title="Connexion">
+              <Connexion />
+            </AuthLayout>
+          } />
+          <Route path="/inscription" element={
+            <AuthLayout title="Créer un compte">
+              <DemandeInscription />
+            </AuthLayout>
+          } />
+          <Route path="/finaliser-inscription" element={
+            <AuthLayout title="Compléter mon profil">
+              <Inscription />
+            </AuthLayout>
+          } />
+          <Route path="/mot-de-passe-oublie" element={
+            <AuthLayout title="Mot de passe oublié">
+              <MotDePasseOublie />
+            </AuthLayout>
+          } />
           
-          {/* ✅ Route pour signature simple */}
+          {/* Routes de signature (publiques avec token) */}
           <Route path="/signature-simple/:token" element={<SignatureSimplePage />} />
-          
-          {/* ✅ Route pour signature PKI */}
           <Route path="/signature-pki/:token" element={<SignaturePkiPage />} />
 
-          <Route path="/super-admin-dashboard" element={<PrivateRoute allowedRoles={['SUPER_ADMIN']}><SuperAdminDashboard /></PrivateRoute>} />
-          <Route path="/user-dashboard" element={<PrivateRoute allowedRoles={['UTILISATEUR', 'EMPLOYE', 'ADMIN_ENTREPRISE', 'SUPER_ADMIN']}><UserDashboard /></PrivateRoute>} />
+          {/* Routes protégées (nécessitent authentification) */}
+          <Route path="/super-admin-dashboard" element={
+            <PrivateRoute allowedRoles={['SUPER_ADMIN']}>
+              <SuperAdminDashboard />
+            </PrivateRoute>
+          } />
+          <Route path="/user-dashboard" element={
+            <PrivateRoute allowedRoles={['UTILISATEUR', 'EMPLOYE', 'ADMIN_ENTREPRISE', 'SUPER_ADMIN']}>
+              <UserDashboard />
+            </PrivateRoute>
+          } />
+          
+          {/* Redirection 404 */}
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </Router>
