@@ -1,76 +1,116 @@
 package pfe.back_end.configuration;
 
-import jakarta.servlet.FilterChain;
-import jakarta.servlet.ServletException;
-import jakarta.servlet.http.Cookie;
-import jakarta.servlet.http.HttpServletRequest;
-import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
-import org.springframework.security.core.authority.SimpleGrantedAuthority;
-import org.springframework.security.core.context.SecurityContextHolder;
-import org.springframework.security.web.authentication.WebAuthenticationDetailsSource;
-import org.springframework.stereotype.Component;
-import org.springframework.web.filter.OncePerRequestFilter;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
+import org.springframework.http.HttpMethod;
+import org.springframework.security.config.annotation.web.builders.HttpSecurity;
+import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
+import org.springframework.security.config.http.SessionCreationPolicy;
+import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
+import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.security.web.SecurityFilterChain;
+import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
+import org.springframework.web.cors.CorsConfiguration;
+import org.springframework.web.cors.CorsConfigurationSource;
+import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 
-import java.io.IOException;
+import java.util.Arrays;
 import java.util.Collections;
 
-@Component
-public class FiltreJwt extends OncePerRequestFilter {
+@Configuration
+@EnableWebSecurity
+public class ConfigurationSecurite {
 
     @Autowired
-    private ServiceJwt jwtUtils;
+    private FiltreJwt jwtFilter;
 
-    @Override
-    protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain filterChain)
-            throws ServletException, IOException {
-
-        // 1. Récupérer le token depuis le cookie
-        String token = recupererJwtDepuisCookie(request);
-
-        // 2. Si le token existe et est valide
-        if (token != null && jwtUtils.validateToken(token)) {
-            try {
-                String email = jwtUtils.getEmailFromToken(token);
-                String role = jwtUtils.getRoleFromToken(token);
-
-                if (email != null && SecurityContextHolder.getContext().getAuthentication() == null) {
-                    // Création de l'autorité (Rôle)
-                    SimpleGrantedAuthority authority = new SimpleGrantedAuthority(role);
-
-                    // Création de l'objet d'authentification pour Spring Security
-                    UsernamePasswordAuthenticationToken authentication = new UsernamePasswordAuthenticationToken(
-                            email, null, Collections.singletonList(authority)
-                    );
-
-                    authentication.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
-
-                    // Injection dans le contexte de sécurité
-                    SecurityContextHolder.getContext().setAuthentication(authentication);
-
-                    System.out.println("🔑 [AUTH SUCCESS] User: " + email + " | Role: " + role);
-                }
-            } catch (Exception e) {
-                System.err.println("❌ [AUTH ERROR] Erreur lors du traitement du token : " + e.getMessage());
-            }
-        }
-
-        // Continuer la chaîne de filtres
-        filterChain.doFilter(request, response);
+    @Bean
+    public PasswordEncoder passwordEncoder() {
+        return new BCryptPasswordEncoder();
     }
 
-    /**
-     * Méthode utilitaire pour extraire le JWT du cookie "accessToken"
-     */
-    private String recupererJwtDepuisCookie(HttpServletRequest request) {
-        if (request.getCookies() != null) {
-            for (Cookie cookie : request.getCookies()) {
-                if ("accessToken".equals(cookie.getName())) {
-                    return cookie.getValue();
-                }
-            }
-        }
-        return null;
+    @Bean
+    public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
+        http
+                .cors(cors -> cors.configurationSource(corsConfigurationSource()))
+                .csrf(csrf -> csrf.disable())
+                .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+                .authorizeHttpRequests(auth -> auth
+                        .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
+
+                        // --- ROUTES PUBLIQUES ---
+                        .requestMatchers(
+                                "/api/auth/**",
+                                "/api/connexion",
+                                "/api/verifier-otp",
+                                "/api/activer-compte",
+                                "/api/finaliser-activation",
+                                "/api/mot-de-passe-oublie",
+                                "/api/reinitialiser-mot-de-passe"
+                        ).permitAll()
+
+                        // --- ROUTES SIGNATURE & INVITATIONS (PUBLIQUES) ---
+                        .requestMatchers(
+                                "/api/signature/details/**",
+                                "/api/signature/apercu/**",
+                                "/api/signature/send-otp",
+                                "/api/signature/valider-simple",
+                                "/api/invitations/verifier/**"
+                        ).permitAll()
+
+                        // --- ROUTES HORODATAGE (PUBLIQUES pour test) ---
+                        .requestMatchers(
+                                "/api/horodatage/statut",
+                                "/api/horodatage/tester"
+                        ).permitAll()
+
+                        // --- ROUTES ARCHIVAGE (utilisateurs connectés) ---
+                        .requestMatchers(
+                                "/api/archivage/verifier/**",
+                                "/api/archivage/recuperer/**",
+                                "/api/archivage/exporter/**"
+                        ).authenticated()
+
+                        // --- ROUTES UTILISATEURS CONNECTÉS ---
+                        .requestMatchers("/api/signature/pki/**").authenticated()
+                        .requestMatchers("/api/utilisateur/pki/mon-statut").authenticated()
+                        .requestMatchers("/api/entreprise/**").hasAuthority("ADMIN_ENTREPRISE")
+                        .requestMatchers("/api/utilisateur/pki/request-certificate").authenticated()
+                        .requestMatchers("/api/utilisateur/sauvegarder-signature").authenticated()
+                        .requestMatchers("/api/entreprise/**").hasAuthority("ADMIN_ENTREPRISE")
+                        .requestMatchers("/api/super-admin/**").hasAuthority("SUPER_ADMIN")
+                        .requestMatchers("/api/signature/pki/executer").authenticated()
+
+                        .anyRequest().authenticated()
+                )
+                .addFilterBefore(jwtFilter, UsernamePasswordAuthenticationFilter.class);
+
+        return http.build();
+    }
+
+    @Bean
+    public CorsConfigurationSource corsConfigurationSource() {
+        CorsConfiguration configuration = new CorsConfiguration();
+        // ✅ AJOUT de l'URL du frontend sur Render
+        configuration.setAllowedOrigins(Arrays.asList(
+            "http://localhost:3000",                         // Local HTTP
+            "https://localhost:3000",                        // Local HTTPS
+            "https://memoire-frontend.onrender.com"          // Render frontend
+        ));
+        configuration.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"));
+        configuration.setAllowedHeaders(Arrays.asList(
+                "Authorization",
+                "Content-Type",
+                "Accept",
+                "X-Requested-With",
+                "Cache-Control"
+        ));
+        configuration.setAllowCredentials(true);
+        configuration.setExposedHeaders(Collections.singletonList("Authorization"));
+
+        UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
+        source.registerCorsConfiguration("/**", configuration);
+        return source;
     }
 }
