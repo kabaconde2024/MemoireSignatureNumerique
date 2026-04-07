@@ -1,4 +1,4 @@
-FROM maven:3.8-openjdk-17 AS build
+FROM maven:3.9-eclipse-temurin-21 AS build
 WORKDIR /app
 
 # Copier le pom.xml et le code source
@@ -9,7 +9,7 @@ COPY Back_end/src ./src
 RUN mvn clean package -DskipTests
 
 # Étape 2 : Image d'exécution
-FROM eclipse-temurin:17-jre
+FROM eclipse-temurin:21-jre
 WORKDIR /app
 
 # Copier le JAR
