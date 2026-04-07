@@ -59,7 +59,6 @@ public class ConfigurationSecurite {
                                 "/api/invitations/verifier/**"
                         ).permitAll()
 
-
                         // --- ROUTES HORODATAGE (PUBLIQUES pour test) ---
                         .requestMatchers(
                                 "/api/horodatage/statut",
@@ -93,8 +92,12 @@ public class ConfigurationSecurite {
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration configuration = new CorsConfiguration();
-        // Support pour le développement local (React)
-        configuration.setAllowedOrigins(Arrays.asList("http://localhost:3000", "https://localhost:3000"));
+        // ✅ AJOUT de l'URL du frontend sur Render
+        configuration.setAllowedOrigins(Arrays.asList(
+            "http://localhost:3000",                         // Local HTTP
+            "https://localhost:3000",                        // Local HTTPS
+            "https://memoire-frontend.onrender.com"          // Render frontend
+        ));
         configuration.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"));
         configuration.setAllowedHeaders(Arrays.asList(
                 "Authorization",
