@@ -16,7 +16,13 @@ import java.util.Map;
 
 @RestController
 @RequestMapping("/api")
-@CrossOrigin(origins = "https://localhost:3000", allowCredentials = "true")
+@CrossOrigin(origins = {
+    "https://localhost:3000",
+    "http://localhost:3000", 
+    "https://memoire-frontend.onrender.com"  // ← AJOUTEZ CETTE LIGNE
+}, allowCredentials = "true")
+
+
 public class VerificationOtpControleur {
 
     @Autowired

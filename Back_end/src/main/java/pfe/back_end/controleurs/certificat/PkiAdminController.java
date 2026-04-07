@@ -25,7 +25,13 @@ import java.util.stream.Collectors;
 
 @RestController
 @RequestMapping("/api/admin/pki")
-@CrossOrigin(origins = "https://localhost:3000")
+@CrossOrigin(origins = {
+    "https://localhost:3000",
+    "http://localhost:3000", 
+    "https://memoire-frontend.onrender.com"  // ← AJOUTEZ CETTE LIGNE
+}, allowCredentials = "true")
+
+
 public class PkiAdminController {
 
     private final ServiceGestionClesHSM hsmService;
