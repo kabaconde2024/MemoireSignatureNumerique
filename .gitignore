@@ -1,0 +1,68 @@
+"# Spring Boot"
+"target/"
+".mvn/"
+"mvnw"
+"mvnw.cmd"
+"*.log"
+""
+"# Frontend"
+"node_modules/"
+"pfe-frontend/node_modules/"
+"build/"
+"dist/"
+".env"
+".env.local"
+""
+"# IDE"
+".idea/"
+"*.iml"
+".gradle/"
+".vscode/"
+""
+"# Secrets et certificats"
+"application-prod.properties"
+"*.p12"
+"*.pfx"
+"*.jks"
+"coffre-pki/"
+"archives/"
+"uploads/"
+"storage/"
+""
+"# OS"
+".DS_Store"
+"Thumbs.db"
+"desktop.ini"
+target/ 
+.mvn/ 
+mvnw 
+mvnw.cmd 
+*.log 
+ 
+# Frontend 
+node_modules/ 
+pfe-frontend/node_modules/ 
+build/ 
+dist/ 
+.env 
+.env.local 
+ 
+# IDE 
+.idea/ 
+*.iml 
+.gradle/ 
+.vscode/ 
+ 
+# Secrets 
+application-prod.properties 
+*.p12 
+*.pfx 
+*.jks 
+coffre-pki/ 
+archives/ 
+uploads/ 
+storage/ 
+ 
+# OS 
+.DS_Store 
+Thumbs.db 

@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <style>
+        body { font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; background-color: #f9f9f9; margin: 0; padding: 0; }
+        .main { max-width: 600px; background-color: #ffffff; margin: 20px auto; border-radius: 8px; border: 1px solid #eeeeee; overflow: hidden; }
+        .header { padding: 30px; text-align: center; background-color: #ffffff; }
+        .logo-text { font-size: 24px; font-weight: bold; color: #000; text-transform: uppercase; }
+        .logo-text span { color: #ffcc00; }
+        .content { padding: 0 40px 40px 40px; text-align: center; }
+        h2 { color: #000000; font-size: 22px; font-weight: 800; }
+        p { color: #666666; font-size: 15px; line-height: 1.6; }
+        .btn-jaune {
+            display: inline-block; padding: 15px 40px; background-color: #ffcc00;
+            color: #000000 !important; text-decoration: none; font-weight: bold;
+            border-radius: 4px; margin-top: 20px;
+        }
+        .footer { padding: 20px; text-align: center; color: #999999; font-size: 11px; }
+    </style>
+</head>
+<body>
+<div class="main">
+    <div class="header">
+        <img th:src="|cid:${logoCid}|" alt="Logo" style="max-height: 50px;" th:if="${logoCid != null}"/>
+        <div class="logo-text" th:unless="${logoCid != null}">NG<span>CONSULTING</span></div>
+    </div>
+
+    <div class="content">
+        <h2>Bonjour,</h2>
+        <p>Bienvenue sur la plateforme <strong>Consulting</strong>.</p>
+        <p>Veuillez cliquer sur le bouton ci-dessous pour finaliser votre inscription et activer votre espace sécurisé.</p>
+
+        <a th:href="${lien}" class="btn-jaune">ACTIVER MON COMPTE</a>
+    </div>
+
+    <div class="footer">
+        &copy; 2026 Consulting Team - Tous droits réservés.
+    </div>
+</div>
+</body>
+</html>
