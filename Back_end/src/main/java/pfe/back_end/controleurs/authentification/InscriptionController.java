@@ -41,8 +41,7 @@ public class InscriptionController {
     @Autowired
     private HttpServletRequest httpServletRequest;
 
-
-  @PostMapping("/auth/demande-inscription")
+@PostMapping("/auth/demande-inscription")
 public ResponseEntity<?> demandeInscription(@RequestBody Map<String, String> request) {
     String email = request.get("email").trim().toLowerCase();
 
@@ -52,24 +51,19 @@ public ResponseEntity<?> demandeInscription(@RequestBody Map<String, String> req
 
     String token = UUID.randomUUID().toString();
 
-    try {
-        emailService.envoyerLienFinalisation(email, token);
-        return ResponseEntity.ok(Map.of("message", "Un lien de finalisation a été envoyé."));
-    } catch (Exception e) {
-        // LOG L'ERREUR MAIS NE BLOQUE PAS L'UTILISATEUR
-        System.err.println("Erreur SMTP : " + e.getMessage());
-        
-        // ASTUCE POUR TA SOUTENANCE :
-        // On renvoie un succès avec le lien directement pour que tu puisses continuer la démo !
-        String lienManuel = "https://memoire-frontend.onrender.com/finaliser-inscription?token=" + token + "&email=" + email;
-        
-        return ResponseEntity.ok(Map.of(
-            "message", "L'email n'a pas pu être envoyé (blocage réseau), mais vous pouvez continuer ici :",
-            "lienDemo", lienManuel
-        ));
-    }
-}
+    // On lance l'envoi dans un thread séparé pour ne pas faire attendre le frontend
+    // et risquer un timeout de la requête HTTP
+    new Thread(() -> {
+        try {
+            emailService.envoyerLienFinalisation(email, token);
+        } catch (Exception e) {
+            System.err.println("Échec de l'envoi réel à " + email + " : " + e.getMessage());
+        }
+    }).start();
 
+    // On répond tout de suite "OK" au client React
+    return ResponseEntity.ok(Map.of("message", "Si l'adresse est valide, un lien vous sera envoyé d'ici quelques instants."));
+}
 
     @PostMapping("/auth/finaliser-inscription")
     public ResponseEntity<?> finaliserInscription(@RequestBody Map<String, Object> payload) {
