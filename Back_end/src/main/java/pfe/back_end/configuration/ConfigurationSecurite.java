@@ -39,7 +39,7 @@ public class ConfigurationSecurite {
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
 
-                        // --- ROUTES PUBLIQUES ---
+                        // --- ROUTES PUBLIQUES (Santé & Authentification) ---
                         .requestMatchers(
                                 "/",
                                 "/api/auth/**",
@@ -57,32 +57,16 @@ public class ConfigurationSecurite {
                                 "/api/signature/apercu/**",
                                 "/api/signature/send-otp",
                                 "/api/signature/valider-simple",
-                                "/api/invitations/verifier/**"
-                        ).permitAll()
-
-                        // --- ROUTES HORODATAGE (PUBLIQUES pour test) ---
-                        .requestMatchers(
+                                "/api/invitations/verifier/**",
                                 "/api/horodatage/statut",
                                 "/api/horodatage/tester"
                         ).permitAll()
 
-                        // --- ROUTES ARCHIVAGE (utilisateurs connectés) ---
-                        .requestMatchers(
-                                "/api/archivage/verifier/**",
-                                "/api/archivage/recuperer/**",
-                                "/api/archivage/exporter/**"
-                        ).authenticated()
-
-                        // --- ROUTES UTILISATEURS CONNECTÉS ---
-                        .requestMatchers("/api/signature/pki/**").authenticated()
-                        .requestMatchers("/api/utilisateur/pki/mon-statut").authenticated()
-                        .requestMatchers("/api/entreprise/**").hasAuthority("ADMIN_ENTREPRISE")
-                        .requestMatchers("/api/utilisateur/pki/request-certificate").authenticated()
-                        .requestMatchers("/api/utilisateur/sauvegarder-signature").authenticated()
+                        // --- ROUTES PRIVÉES (Rôles & Admin) ---
                         .requestMatchers("/api/entreprise/**").hasAuthority("ADMIN_ENTREPRISE")
                         .requestMatchers("/api/super-admin/**").hasAuthority("SUPER_ADMIN")
-                        .requestMatchers("/api/signature/pki/executer").authenticated()
-
+                        
+                        // Tout le reste nécessite une authentification
                         .anyRequest().authenticated()
                 )
                 .addFilterBefore(jwtFilter, UsernamePasswordAuthenticationFilter.class);
@@ -93,20 +77,13 @@ public class ConfigurationSecurite {
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration configuration = new CorsConfiguration();
-        // ✅ AJOUT de l'URL du frontend sur Render
         configuration.setAllowedOrigins(Arrays.asList(
-            "http://localhost:3000",                         // Local HTTP
-            "https://localhost:3000",                        // Local HTTPS
-            "https://memoire-frontend.onrender.com"          // Render frontend
+                "http://localhost:3000",
+                "https://localhost:3000",
+                "https://memoire-frontend.onrender.com"
         ));
         configuration.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"));
-        configuration.setAllowedHeaders(Arrays.asList(
-                "Authorization",
-                "Content-Type",
-                "Accept",
-                "X-Requested-With",
-                "Cache-Control"
-        ));
+        configuration.setAllowedHeaders(Arrays.asList("Authorization", "Content-Type", "Accept", "X-Requested-With", "Cache-Control"));
         configuration.setAllowCredentials(true);
         configuration.setExposedHeaders(Collections.singletonList("Authorization"));
 
