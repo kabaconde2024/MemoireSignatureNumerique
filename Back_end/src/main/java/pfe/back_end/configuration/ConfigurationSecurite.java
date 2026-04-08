@@ -41,6 +41,7 @@ public class ConfigurationSecurite {
 
                         // --- ROUTES PUBLIQUES ---
                         .requestMatchers(
+                                "/",
                                 "/api/auth/**",
                                 "/api/connexion",
                                 "/api/verifier-otp",
