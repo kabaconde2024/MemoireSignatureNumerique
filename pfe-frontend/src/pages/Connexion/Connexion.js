@@ -55,100 +55,110 @@ const Connexion = ({ onSwitch, onLoginSuccess }) => {
         }
     };
 
-    const handleLogin = async () => {
-        setLoading(true);
-        setError('');
-        try {
-            const response = await API.post('/connexion', { 
-                email: email.trim().toLowerCase(), 
-                motDePasse 
-            });
-            
-            localStorage.setItem('role', response.data.role);
-            localStorage.setItem('user_info', JSON.stringify({
-                prenom: response.data.prenom,
-                nom: response.data.nom,
-                organisation: response.data.organisation,
-                email: email
-            }));
-
-            if (response.data.necessiteMfa) {
-                setIsMfaRequired(true);
-            } else {
-                if (onLoginSuccess) onLoginSuccess();
-                setTimeout(() => redirectUserByRole(response.data.role), 200);
-            }
-        } catch (err) {
-            setError(err.response?.data?.erreur || "Identifiants incorrects ou compte non activé.");
-        } finally { setLoading(false); }
-    };
-
-    const handleVerifyOtp = async () => {
-        setLoading(true);
-        setError('');
-        try {
-            const response = await API.post('/verifier-otp', { 
-                email: email.trim().toLowerCase(), 
-                code: otpCode.trim() 
-            });
-            
-            // 💾 Sauvegarde sécurisée des données renvoyées par Spring Boot
-            localStorage.setItem('role', response.data.role);
-            localStorage.setItem('userId', response.data.userId); 
-            localStorage.setItem('organisationId', response.data.organisationId); 
-            localStorage.setItem('user_info', JSON.stringify({
-                prenom: response.data.prenom,
-                nom: response.data.nom,
-                organisation: response.data.organisationNom,
-                email: response.data.email
-            }));
-
-            if (onLoginSuccess) onLoginSuccess();
-            
-            setTimeout(() => {
-                redirectUserByRole(response.data.role);
-            }, 800);
-
-        } catch (err) {
-            setError("Code OTP invalide ou expiré.");
-        } finally { setLoading(false); }
-    };
-
-    const handleGoogleSuccess = async (googleData) => {
-        setLoading(true);
-        setError('');
-        try {
-            console.log("Envoi du token Google au Backend Spring Boot...");
-            
-            // 🚀 1. On envoie le jeton à Spring Boot pour validation
-            const response = await API.post('/auth/google', { 
-                token: googleData.credential 
-            });
-
-            // 💾 2. On sauvegarde les informations en local
-            localStorage.setItem('role', response.data.role);
-            localStorage.setItem('user_info', JSON.stringify({
-                prenom: response.data.prenom,
-                nom: response.data.nom,
-                organisation: response.data.organisationNom,
-                email: response.data.email
-            }));
-
-            if (onLoginSuccess) onLoginSuccess();
-
-            // 🧭 3. On redirige vers le bon Dashboard !
-            setTimeout(() => {
-                redirectUserByRole(response.data.role);
-            }, 500);
-
-        } catch (err) {
-            console.error("Erreur d'authentification Google Backend:", err);
-            // C'est ici que s'affichera "Compte Google non reconnu" si l'email n'existe pas en BDD
-            setError(err.response?.data?.erreur || "Échec de la connexion avec Google.");
-        } finally {
-            setLoading(false);
+const handleLogin = async () => {
+    setLoading(true);
+    setError('');
+    try {
+        const response = await API.post('/connexion', { 
+            email: email.trim().toLowerCase(), 
+            motDePasse 
+        });
+        
+        // ✅ AJOUTER CETTE LIGNE - Sauvegarder le token JWT
+        if (response.data.token) {
+            localStorage.setItem('accessToken', response.data.token);
         }
-    };
+        
+        localStorage.setItem('role', response.data.role);
+        localStorage.setItem('user_info', JSON.stringify({
+            prenom: response.data.prenom,
+            nom: response.data.nom,
+            organisation: response.data.organisation,
+            email: email
+        }));
+
+        if (response.data.necessiteMfa) {
+            setIsMfaRequired(true);
+        } else {
+            if (onLoginSuccess) onLoginSuccess();
+            setTimeout(() => redirectUserByRole(response.data.role), 200);
+        }
+    } catch (err) {
+        setError(err.response?.data?.erreur || "Identifiants incorrects ou compte non activé.");
+    } finally { setLoading(false); }
+};
+
+ const handleVerifyOtp = async () => {
+    setLoading(true);
+    setError('');
+    try {
+        const response = await API.post('/verifier-otp', { 
+            email: email.trim().toLowerCase(), 
+            code: otpCode.trim() 
+        });
+        
+        // ✅ AJOUTER CETTE LIGNE - Sauvegarder le token JWT
+        if (response.data.token) {
+            localStorage.setItem('accessToken', response.data.token);
+        }
+        
+        localStorage.setItem('role', response.data.role);
+        localStorage.setItem('userId', response.data.userId); 
+        localStorage.setItem('organisationId', response.data.organisationId); 
+        localStorage.setItem('user_info', JSON.stringify({
+            prenom: response.data.prenom,
+            nom: response.data.nom,
+            organisation: response.data.organisationNom,
+            email: response.data.email
+        }));
+
+        if (onLoginSuccess) onLoginSuccess();
+        
+        setTimeout(() => {
+            redirectUserByRole(response.data.role);
+        }, 800);
+
+    } catch (err) {
+        setError("Code OTP invalide ou expiré.");
+    } finally { setLoading(false); }
+};
+
+  const handleGoogleSuccess = async (googleData) => {
+    setLoading(true);
+    setError('');
+    try {
+        console.log("Envoi du token Google au Backend Spring Boot...");
+        
+        const response = await API.post('/auth/google', { 
+            token: googleData.credential 
+        });
+
+        // ✅ AJOUTER CETTE LIGNE - Sauvegarder le token JWT
+        if (response.data.token) {
+            localStorage.setItem('accessToken', response.data.token);
+        }
+
+        localStorage.setItem('role', response.data.role);
+        localStorage.setItem('user_info', JSON.stringify({
+            prenom: response.data.prenom,
+            nom: response.data.nom,
+            organisation: response.data.organisationNom,
+            email: response.data.email
+        }));
+
+        if (onLoginSuccess) onLoginSuccess();
+
+        setTimeout(() => {
+            redirectUserByRole(response.data.role);
+        }, 500);
+
+    } catch (err) {
+        console.error("Erreur d'authentification Google Backend:", err);
+        setError(err.response?.data?.erreur || "Échec de la connexion avec Google.");
+    } finally {
+        setLoading(false);
+    }
+};
 
     return (
         <Box sx={{ p: 4, bgcolor: 'rgba(255, 255, 255, 0.95)', backdropFilter: 'blur(15px)', borderRadius: 6 }}>

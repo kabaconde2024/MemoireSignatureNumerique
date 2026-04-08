@@ -12,16 +12,17 @@ const getBaseURL = () => {
 
 const API = axios.create({
     baseURL: getBaseURL(),
-    withCredentials: false,
+    withCredentials: true,  // ✅ CHANGER de false à true
     headers: {
         'Content-Type': 'application/json',
         'Accept': 'application/json'
     }
 });
 
-// Intercepteur pour ajouter le token JWT
+// Intercepteur pour ajouter le token JWT (optionnel maintenant car cookie est utilisé)
 API.interceptors.request.use(
     (config) => {
+        // ⚠️ Optionnel: Garder pour fallback mais backend privilégie le cookie
         const token = localStorage.getItem('accessToken');
         if (token) {
             config.headers.Authorization = `Bearer ${token}`;
@@ -46,6 +47,14 @@ API.interceptors.response.use(
             localStorage.removeItem('accessToken');
             localStorage.removeItem('refreshToken');
             localStorage.removeItem('user');
+            localStorage.removeItem('role');
+            localStorage.removeItem('user_info');
+            localStorage.removeItem('userId');
+            localStorage.removeItem('organisationId');
+            
+            // Supprimer le cookie aussi
+            document.cookie = 'accessToken=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;';
+            
             window.location.href = '/connexion';
         }
         
@@ -54,7 +63,6 @@ API.interceptors.response.use(
             console.error('Accès non autorisé');
         }
         
-        // Afficher l'erreur dans la console pour le débogage
         console.error('API Error:', error.response?.data || error.message);
         
         return Promise.reject(error);
