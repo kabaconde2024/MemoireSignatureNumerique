@@ -3,6 +3,7 @@ package pfe.back_end.services.notification;
 import jakarta.mail.MessagingException;
 import jakarta.mail.internet.MimeMessage;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.io.ClassPathResource;
 import org.springframework.mail.SimpleMailMessage;
 import org.springframework.mail.javamail.JavaMailSender;
@@ -10,9 +11,7 @@ import org.springframework.mail.javamail.MimeMessageHelper;
 import org.springframework.stereotype.Service;
 import org.thymeleaf.context.Context;
 import org.thymeleaf.TemplateEngine;
-import jakarta.mail.internet.MimeMessage;
-import org.springframework.mail.javamail.MimeMessageHelper;
-// ... autres imports
+import org.springframework.beans.factory.annotation.Value;
 
 @Service
 public class ServiceNotification {
@@ -20,16 +19,17 @@ public class ServiceNotification {
     @Autowired
     private JavaMailSender mailSender;
 
-    /**
-     * Envoie le lien de finalisation d'inscription
-     */
     @Autowired
     private TemplateEngine templateEngine;
 
+    // ✅ Ajoutez cette variable pour l'URL du frontend
+    @Value("${app.frontend.url:https://memoire-frontend.onrender.com}")
+    private String frontendUrl;
+
     public void envoyerLienFinalisation(String email, String token) {
         try {
-            // Redirection vers le composant Inscription avec email et token en paramètres
-            String lien = "https://localhost:3000/finaliser-inscription?token=" + token + "&email=" + email;
+            // ✅ Utilisez l'URL Render au lieu de localhost
+            String lien = frontendUrl + "/finaliser-inscription?token=" + token + "&email=" + email;
             Context context = new Context();
             context.setVariable("lien", lien);
             context.setVariable("logoCid", "logoNGSign");
@@ -56,16 +56,6 @@ public class ServiceNotification {
         }
     }
 
-    /**
-     * Pour le parcours ENTREPRISE (Ahmed/Karim)
-     * Envoie l'invitation professionnelle générée par l'administrateur.
-     */
-
-
-    /**
-     * Envoi du code MFA pour la connexion
-     */
-
     public void envoyerCodeMfa(String email, String code) {
         try {
             MimeMessage message = mailSender.createMimeMessage();
@@ -74,32 +64,24 @@ public class ServiceNotification {
             helper.setTo(email);
             helper.setSubject(" Code de sécurité - PROTECTED CONSULTING");
 
-            // Lien vers ton frontend React avec le code en paramètre
-            String lienCopieRapide = "https://localhost:3000/copy-helper?code=" + code;
+            // ✅ Utilisez l'URL Render
+            String lienCopieRapide = frontendUrl + "/copy-helper?code=" + code;
 
-            String contenuHtml =
-                    "<div style='font-family: \"Segoe UI\", Tahoma, Geneva, Verdana, sans-serif; max-width: 500px; margin: auto; border: 1px solid #e2e8f0; border-radius: 16px; overflow: hidden;'>" +
-                            "<div style='background-color: #0b1e39; padding: 20px; text-align: center;'>" +
-                            "<h1 style='color: #ffffff; margin: 0; font-size: 16px; letter-spacing: 2px;'>PROTECTED CONSULTING</h1>" +
-                            "</div>" +
-                            "<div style='padding: 40px 20px; text-align: center; background-color: #ffffff;'>" +
-                            "<p style='color: #64748b; font-size: 15px; margin-bottom: 25px;'>Votre code de vérification est :</p>" +
-
-                            // Bloc de code très lisible
-                            "<div style='background-color: #f8fafc; border: 2px dashed #cbd5e1; padding: 20px; border-radius: 12px; display: inline-block; min-width: 200px;'>" +
-                            "<span style='font-family: \"Courier New\", monospace; font-size: 36px; font-weight: bold; color: #0f172a; letter-spacing: 10px;'>" +
-                            code +
-                            "</span>" +
-                            "</div>" +
-
-                            "<p style='color: #94a3b8; font-size: 12px; margin-top: 25px;'>" +
-                            "Ce code expirera dans 5 minutes. Ne le partagez avec personne." +
-                            "</p>" +
-                            "</div>" +
-                            "<div style='background-color: #f1f5f9; padding: 15px; text-align: center;'>" +
-                            "<p style='margin: 0; color: #94a3b8; font-size: 11px;'>&copy; 2026 Protected Consulting - Sécurité Certifiée</p>" +
-                            "</div>" +
-                            "</div>";
+            String contenuHtml = "<div style='font-family: \"Segoe UI\", Tahoma, Geneva, Verdana, sans-serif; max-width: 500px; margin: auto; border: 1px solid #e2e8f0; border-radius: 16px; overflow: hidden;'>" +
+                    "<div style='background-color: #0b1e39; padding: 20px; text-align: center;'>" +
+                    "<h1 style='color: #ffffff; margin: 0; font-size: 16px; letter-spacing: 2px;'>PROTECTED CONSULTING</h1>" +
+                    "</div>" +
+                    "<div style='padding: 40px 20px; text-align: center; background-color: #ffffff;'>" +
+                    "<p style='color: #64748b; font-size: 15px; margin-bottom: 25px;'>Votre code de vérification est :</p>" +
+                    "<div style='background-color: #f8fafc; border: 2px dashed #cbd5e1; padding: 20px; border-radius: 12px; display: inline-block; min-width: 200px;'>" +
+                    "<span style='font-family: \"Courier New\", monospace; font-size: 36px; font-weight: bold; color: #0f172a; letter-spacing: 10px;'>" + code + "</span>" +
+                    "</div>" +
+                    "<p style='color: #94a3b8; font-size: 12px; margin-top: 25px;'>Ce code expirera dans 5 minutes. Ne le partagez avec personne.</p>" +
+                    "</div>" +
+                    "<div style='background-color: #f1f5f9; padding: 15px; text-align: center;'>" +
+                    "<p style='margin: 0; color: #94a3b8; font-size: 11px;'>&copy; 2026 Protected Consulting - Sécurité Certifiée</p>" +
+                    "</div>" +
+                    "</div>";
 
             helper.setText(contenuHtml, true);
             mailSender.send(message);
@@ -107,9 +89,7 @@ public class ServiceNotification {
             e.printStackTrace();
         }
     }
-    /**
-     * Envoi du code pour la réinitialisation du mot de passe
-     */
+
     public void renitialiser(String to, String code) {
         SimpleMailMessage message = new SimpleMailMessage();
         message.setTo(to);
@@ -119,19 +99,19 @@ public class ServiceNotification {
     }
 
     public void envoyerLienSignature(String emailDestinataire, String nomExpediteur, String nomDoc, String token, String typeSignature) {
-        // ✅ Déterminer le lien en fonction du type de signature
+        // ✅ Utilisez l'URL Render
         String lien;
         String typeAffichage;
         String couleurBouton;
 
         if ("pki".equalsIgnoreCase(typeSignature)) {
-            lien = "https://localhost:3000/signature-pki/" + token;
+            lien = frontendUrl + "/signature-pki/" + token;
             typeAffichage = "🔐 Signature PKI (Certificat numérique)";
-            couleurBouton = "#2e7d32"; // Vert
+            couleurBouton = "#2e7d32";
         } else {
-            lien = "https://localhost:3000/signature-simple/" + token;
+            lien = frontendUrl + "/signature-simple/" + token;
             typeAffichage = "📝 Signature simple";
-            couleurBouton = "#ffcc00"; // Jaune
+            couleurBouton = "#ffcc00";
         }
 
         String contenuHtml = String.format("""
