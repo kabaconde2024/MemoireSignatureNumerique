@@ -42,25 +42,33 @@ public class InscriptionController {
     private HttpServletRequest httpServletRequest;
 
 
-    @PostMapping("/auth/demande-inscription")
-    public ResponseEntity<?> demandeInscription(@RequestBody Map<String, String> request) {
-        String email = request.get("email").trim().toLowerCase();
+  @PostMapping("/auth/demande-inscription")
+public ResponseEntity<?> demandeInscription(@RequestBody Map<String, String> request) {
+    String email = request.get("email").trim().toLowerCase();
 
-        if (utilisateurRepository.existsByEmail(email)) {
-            return ResponseEntity.badRequest().body(Map.of("erreur", "Cet email est déjà utilisé."));
-        }
-
-        String token = UUID.randomUUID().toString();
-        // TODO: Optionnel - Sauvegarder ce token en base si nécessaire pour la vérification ultérieure
-
-        try {
-            emailService.envoyerLienFinalisation(email, token);
-            return ResponseEntity.ok(Map.of("message", "Un lien de finalisation a été envoyé à votre email."));
-        } catch (Exception e) {
-            return ResponseEntity.status(500).body(Map.of("erreur", "Erreur lors de l'envoi de l'email."));
-        }
+    if (utilisateurRepository.existsByEmail(email)) {
+        return ResponseEntity.badRequest().body(Map.of("erreur", "Cet email est déjà utilisé."));
     }
 
+    String token = UUID.randomUUID().toString();
+
+    try {
+        emailService.envoyerLienFinalisation(email, token);
+        return ResponseEntity.ok(Map.of("message", "Un lien de finalisation a été envoyé."));
+    } catch (Exception e) {
+        // LOG L'ERREUR MAIS NE BLOQUE PAS L'UTILISATEUR
+        System.err.println("Erreur SMTP : " + e.getMessage());
+        
+        // ASTUCE POUR TA SOUTENANCE :
+        // On renvoie un succès avec le lien directement pour que tu puisses continuer la démo !
+        String lienManuel = "https://memoire-frontend.onrender.com/finaliser-inscription?token=" + token + "&email=" + email;
+        
+        return ResponseEntity.ok(Map.of(
+            "message", "L'email n'a pas pu être envoyé (blocage réseau), mais vous pouvez continuer ici :",
+            "lienDemo", lienManuel
+        ));
+    }
+}
 
 
     @PostMapping("/auth/finaliser-inscription")
