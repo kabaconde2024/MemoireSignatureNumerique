@@ -47,7 +47,15 @@ public class ConfigurationSecurite {
                                 "/api/activer-compte",
                                 "/api/finaliser-activation",
                                 "/api/mot-de-passe-oublie",
-                                "/api/reinitialiser-mot-de-passe"
+                                "/api/reinitialiser-mot-de-passe",
+                                
+                                // ✅ AJOUTÉ : Endpoint de test public
+                                "/api/public/**",
+                                
+                                // ✅ AJOUTÉ : Routes OAuth2/Google
+                                "/oauth2/**",
+                                "/login/oauth2/**",
+                                "/login/**"
                         ).permitAll()
 
                         // --- ROUTES SIGNATURE & INVITATIONS (PUBLIQUES) ---
@@ -78,7 +86,6 @@ public class ConfigurationSecurite {
                         .requestMatchers("/api/entreprise/**").hasAuthority("ADMIN_ENTREPRISE")
                         .requestMatchers("/api/utilisateur/pki/request-certificate").authenticated()
                         .requestMatchers("/api/utilisateur/sauvegarder-signature").authenticated()
-                        .requestMatchers("/api/entreprise/**").hasAuthority("ADMIN_ENTREPRISE")
                         .requestMatchers("/api/super-admin/**").hasAuthority("SUPER_ADMIN")
                         .requestMatchers("/api/signature/pki/executer").authenticated()
 
@@ -92,11 +99,10 @@ public class ConfigurationSecurite {
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration configuration = new CorsConfiguration();
-        // ✅ AJOUT de l'URL du frontend sur Render
         configuration.setAllowedOrigins(Arrays.asList(
-            "http://localhost:3000",                         // Local HTTP
-            "https://localhost:3000",                        // Local HTTPS
-            "https://memoire-frontend.onrender.com"          // Render frontend
+            "http://localhost:3000",
+            "https://localhost:3000",
+            "https://memoire-frontend.onrender.com"
         ));
         configuration.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"));
         configuration.setAllowedHeaders(Arrays.asList(
