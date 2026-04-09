@@ -6,7 +6,7 @@ import { Box, Button, Typography, Paper, Table, TableBody, TableCell, TableConta
 const ListeDocumentsAutoSignes = ({ setSnackbar }) => {
     const [documents, setDocuments] = useState([]);
     // ✅ CORRECTION : Pointer vers le bon contrôleur
-    const API_BASE_URL = 'https://localhost:8443/api/documents';
+    const API_BASE_URL = 'https://memoiresignaturenumerique.onrender.com/api/documents';
 
     const fetchDocuments = async () => {
         try {

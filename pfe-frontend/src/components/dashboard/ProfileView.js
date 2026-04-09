@@ -59,7 +59,7 @@ const ProfileView = ({ userData, setUserData, isEditing, setIsEditing, handleUpd
     const handleSavePhoto = async () => {
         setUploading(true);
         try {
-            await axios.post('https://localhost:8443/api/utilisateur/upload-photo', 
+            await axios.post('https://memoiresignaturenumerique.onrender.com/api/utilisateur/upload-photo', 
                 { photo: tempPhoto },
                 { withCredentials: true }
             );
@@ -78,7 +78,7 @@ const ProfileView = ({ userData, setUserData, isEditing, setIsEditing, handleUpd
     const handleDeletePhoto = async () => {
         setUploading(true);
         try {
-            await axios.post('https://localhost:8443/api/utilisateur/upload-photo', 
+            await axios.post('https://memoiresignaturenumerique.onrender.com/api/utilisateur/upload-photo', 
                 { photo: null },
                 { withCredentials: true }
             );

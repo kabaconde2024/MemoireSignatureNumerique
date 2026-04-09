@@ -70,7 +70,7 @@ const AuditLogsView = ({ setSnackbar }) => {
     const fetchLogs = async () => {
         setLoading(true);
         try {
-            let url = 'https://localhost:8443/api/admin/audit/logs';
+            let url = 'https://memoiresignaturenumerique.onrender.com/api/admin/audit/logs';
             const params = [];
             if (filterUserEmail) params.push(`userEmail=${encodeURIComponent(filterUserEmail)}`);
             if (filterEventType) params.push(`eventType=${filterEventType}`);

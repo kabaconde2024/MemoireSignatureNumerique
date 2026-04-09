@@ -30,7 +30,7 @@ const ConfigurationView = ({ setSnackbar }) => {
 
     const fetchConfig = async () => {
         try {
-            const response = await axios.get('https://localhost:8443/api/admin/config', { withCredentials: true });
+            const response = await axios.get('https://memoiresignaturenumerique.onrender.com/api/admin/config', { withCredentials: true });
             setConfig(response.data);
         } catch (error) {
             console.error("Erreur chargement config:", error);
@@ -41,7 +41,7 @@ const ConfigurationView = ({ setSnackbar }) => {
         setLoading(true);
         setSaved(false);
         try {
-            await axios.post('https://localhost:8443/api/admin/config', config, { withCredentials: true });
+            await axios.post('https://memoiresignaturenumerique.onrender.com/api/admin/config', config, { withCredentials: true });
             setSnackbar({ open: true, message: "✅ Configuration sauvegardée avec succès", severity: 'success' });
             setSaved(true);
             setTimeout(() => setSaved(false), 3000);

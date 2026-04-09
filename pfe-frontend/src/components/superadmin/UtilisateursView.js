@@ -22,7 +22,7 @@ const UtilisateursView = ({ setSnackbar }) => {
     const fetchUsers = async () => {
         setLoading(true);
         try {
-            const response = await axios.get('https://localhost:8443/api/admin/utilisateurs', { withCredentials: true });
+            const response = await axios.get('https://memoiresignaturenumerique.onrender.com/api/admin/utilisateurs', { withCredentials: true });
             console.log("Utilisateurs reçus:", response.data);
             setUsers(response.data);
             setFilteredUsers(response.data);
@@ -50,7 +50,7 @@ const UtilisateursView = ({ setSnackbar }) => {
     const handleRoleChange = async () => {
         if (!selectedUser || !newRole) return;
         try {
-            await axios.put(`https://localhost:8443/api/admin/utilisateurs/${selectedUser.id}/role`, 
+            await axios.put(`https://memoiresignaturenumerique.onrender.com/api/admin/utilisateurs/${selectedUser.id}/role`, 
                 { role: newRole }, 
                 { withCredentials: true }
             );
@@ -65,7 +65,7 @@ const UtilisateursView = ({ setSnackbar }) => {
     const handleToggleStatus = async (userId, currentStatus) => {
         const newStatus = currentStatus === 'ACTIF' ? 'INACTIF' : 'ACTIF';
         try {
-            await axios.put(`https://localhost:8443/api/admin/utilisateurs/${userId}/status`,
+            await axios.put(`https://memoiresignaturenumerique.onrender.com/api/admin/utilisateurs/${userId}/status`,
                 { statut: newStatus },
                 { withCredentials: true }
             );

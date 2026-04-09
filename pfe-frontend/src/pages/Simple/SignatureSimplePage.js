@@ -63,7 +63,7 @@ const SignatureSimplePage = () => {
         const fetchDetails = async () => {
             try {
                 setLoading(true);
-                const res = await axios.get(`https://localhost:8443/api/signature/details/${token}`);
+                const res = await axios.get(`https://memoiresignaturenumerique.onrender.com/api/signature/details/${token}`);
                 
                 // ✅ Vérifier si l'invitation a expiré
                 if (res.data.dateExpiration && new Date(res.data.dateExpiration) < new Date()) {
@@ -74,7 +74,7 @@ const SignatureSimplePage = () => {
                 
                 setInvitation(res.data);
                 setSignatureText(`${res.data.prenomSignataire} ${res.data.nomSignataire}`);
-                setPdfUrl(`https://localhost:8443/api/signature/apercu/${token}`);
+                setPdfUrl(`https://memoiresignaturenumerique.onrender.com/api/signature/apercu/${token}`);
             } catch (err) {
                 console.error("Erreur:", err);
                 alert("Erreur lors du chargement des détails de la signature");
@@ -158,7 +158,7 @@ const SignatureSimplePage = () => {
         
         try {
             setLoading(true);
-            await axios.post(`https://localhost:8443/api/signature/send-otp?token=${token}`);
+            await axios.post(`https://memoiresignaturenumerique.onrender.com/api/signature/send-otp?token=${token}`);
             setIsOtpSent(true);
             alert("✅ Code de sécurité envoyé avec succès !");
         } catch (err) {
@@ -257,7 +257,7 @@ const SignatureSimplePage = () => {
             };
 
             const response = await axios.post(
-                'https://localhost:8443/api/signature/valider-simple', 
+                'https://memoiresignaturenumerique.onrender.com/api/signature/valider-simple', 
                 payload, 
                 { responseType: 'blob' }
             );

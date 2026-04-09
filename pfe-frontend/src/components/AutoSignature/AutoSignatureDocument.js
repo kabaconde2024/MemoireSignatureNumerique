@@ -17,7 +17,7 @@ const AutoSignatureDocument = ({ setSnackbar }) => {
     const [checkingSignature, setCheckingSignature] = useState(true);
     const contentRef = useRef(null);
 
-    const API_BASE_URL = 'https://localhost:8443/api';
+    const API_BASE_URL = 'https://memoiresignaturenumerique.onrender.com/api';
 
     // ✅ Vérifier si l'utilisateur a une signature enregistrée
     useEffect(() => {

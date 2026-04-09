@@ -37,7 +37,7 @@ const ChangerMotDePasse = ({ userId }) => {
 
         try {
             // L'ID est passé dans l'URL comme dans ton Contrôleur Spring Boot
-            const response = await axios.post(`https://localhost:8443/api/changer-mdp/${userId}`, {
+            const response = await axios.post(`https://memoiresignaturenumerique.onrender.com/api/changer-mdp/${userId}`, {
                 ancienMdp: formData.ancienMdp,
                 nouveauMdp: formData.nouveauMdp
             }, { withCredentials: true });

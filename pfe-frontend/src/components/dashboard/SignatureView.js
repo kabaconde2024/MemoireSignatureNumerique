@@ -15,7 +15,7 @@ const SignatureView = ({ setSnackbar, onSignatureSaved }) => {
     useEffect(() => {
         const checkExistingSignature = async () => {
             try {
-                const response = await axios.get('https://localhost:8443/api/utilisateur/mon-profil', { withCredentials: true });
+                const response = await axios.get('https://memoiresignaturenumerique.onrender.com/api/utilisateur/mon-profil', { withCredentials: true });
                 if (response.data.imageSignature) {
                     setSignatureExists(true);
                     setPreviewUrl(response.data.imageSignature);
@@ -45,7 +45,7 @@ const SignatureView = ({ setSnackbar, onSignatureSaved }) => {
         
         try {
             setIsSaving(true);
-            await axios.post('https://localhost:8443/api/utilisateur/sauvegarder-signature', 
+            await axios.post('https://memoiresignaturenumerique.onrender.com/api/utilisateur/sauvegarder-signature', 
                 { imageSignature: dataURL }, 
                 { withCredentials: true }
             );

@@ -14,7 +14,7 @@ const CertificatView = ({ currentStatus, onStatusRefresh, setSnackbar }) => {
         const fetchCertificat = async () => {
             if (currentStatus === 'ACTIVE') {
                 try {
-                    const res = await axios.get('https://localhost:8443/api/utilisateur/pki/mon-statut', {
+                    const res = await axios.get('https://memoiresignaturenumerique.onrender.com/api/utilisateur/pki/mon-statut', {
                         withCredentials: true
                     });
                     setCertInfo(res.data);
@@ -37,7 +37,7 @@ const CertificatView = ({ currentStatus, onStatusRefresh, setSnackbar }) => {
     const handleRequest = async () => {
         setLoading(true);
         try {
-            const response = await axios.post('https://localhost:8443/api/utilisateur/pki/request-certificate', {}, { withCredentials: true });
+            const response = await axios.post('https://memoiresignaturenumerique.onrender.com/api/utilisateur/pki/request-certificate', {}, { withCredentials: true });
             setSnackbar({ 
                 open: true, 
                 message: "✅ Votre demande de certificat a été transmise avec succès. Un administrateur va traiter votre demande dans les plus brefs délais.", 
@@ -55,7 +55,7 @@ const CertificatView = ({ currentStatus, onStatusRefresh, setSnackbar }) => {
     const handleRenew = async () => {
         setRenewLoading(true);
         try {
-            const response = await axios.post('https://localhost:8443/api/utilisateur/pki/renouveler-certificat', {}, { withCredentials: true });
+            const response = await axios.post('https://memoiresignaturenumerique.onrender.com/api/utilisateur/pki/renouveler-certificat', {}, { withCredentials: true });
             setSnackbar({ 
                 open: true, 
                 message: "✅ Votre demande de renouvellement a été enregistrée. L'administrateur va traiter votre demande.", 

@@ -24,7 +24,7 @@ const HorodatageStatusView = ({ setSnackbar }) => {
     const fetchStatus = async () => {
         setLoading(true);
         try {
-            const response = await axios.get('https://localhost:8443/api/horodatage/statut', {
+            const response = await axios.get('https://memoiresignaturenumerique.onrender.com/api/horodatage/statut', {
                 withCredentials: true
             });
             setStatus(response.data);
@@ -39,7 +39,7 @@ const HorodatageStatusView = ({ setSnackbar }) => {
     const testerHorodatage = async () => {
         setTesting(true);
         try {
-            const response = await axios.post('https://localhost:8443/api/horodatage/tester', 
+            const response = await axios.post('https://memoiresignaturenumerique.onrender.com/api/horodatage/tester', 
                 { data: testData || "Test automatique" },
                 { withCredentials: true }
             );

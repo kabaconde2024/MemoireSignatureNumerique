@@ -48,7 +48,7 @@ const TransactionsView = ({ invitations, loading }) => {
 
   const handleDownload = async (documentId, nomFichier) => {
     try {
-      const response = await axios.get(`https://localhost:8443/api/documents/download-signe/${documentId}`, {
+      const response = await axios.get(`https://memoiresignaturenumerique.onrender.com/api/documents/download-signe/${documentId}`, {
         responseType: 'blob',
         withCredentials: true
       });
@@ -70,7 +70,7 @@ const TransactionsView = ({ invitations, loading }) => {
   const verifierSignature = async (documentId, nomFichier) => {
     try {
       const response = await axios.post(
-        'https://localhost:8443/api/signature/verifier-document-signe',
+        'https://memoiresignaturenumerique.onrender.com/api/signature/verifier-document-signe',
         { documentId: documentId },
         { withCredentials: true }
       );

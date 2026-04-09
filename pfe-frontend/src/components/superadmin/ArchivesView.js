@@ -44,7 +44,7 @@ const ArchivesView = ({ setSnackbar }) => {
     const fetchArchives = async () => {
         setLoading(true);
         try {
-            const response = await axios.get('https://localhost:8443/api/archivage/liste', {
+            const response = await axios.get('https://memoiresignaturenumerique.onrender.com/api/archivage/liste', {
                 withCredentials: true
             });
             setArchives(response.data);
@@ -61,7 +61,7 @@ const ArchivesView = ({ setSnackbar }) => {
     const fetchNonArchivedDocuments = async () => {
         setLoadingNonArchived(true);
         try {
-            const response = await axios.get('https://localhost:8443/api/archivage/documents-non-archives', {
+            const response = await axios.get('https://memoiresignaturenumerique.onrender.com/api/archivage/documents-non-archives', {
                 withCredentials: true
             });
             setNonArchivedDocs(response.data);
@@ -94,7 +94,7 @@ const ArchivesView = ({ setSnackbar }) => {
         setLoading(true);
         try {
             const response = await axios.post(
-                `https://localhost:8443/api/archivage/archiver/${selectedDocToArchive.id}?niveau=${archiveLevel}`,
+                `https://memoiresignaturenumerique.onrender.com/api/archivage/archiver/${selectedDocToArchive.id}?niveau=${archiveLevel}`,
                 {},
                 { withCredentials: true }
             );
@@ -122,7 +122,7 @@ const ArchivesView = ({ setSnackbar }) => {
     // Vérifier l'intégrité d'une archive
     const verifierIntegrite = async (documentId) => {
         try {
-            const response = await axios.get(`https://localhost:8443/api/archivage/verifier/${documentId}`, {
+            const response = await axios.get(`https://memoiresignaturenumerique.onrender.com/api/archivage/verifier/${documentId}`, {
                 withCredentials: true
             });
             setSnackbar({ 
@@ -138,7 +138,7 @@ const ArchivesView = ({ setSnackbar }) => {
     // Exporter une archive
     const exporterArchive = async (documentId, reference) => {
         try {
-            const response = await axios.get(`https://localhost:8443/api/archivage/exporter/${documentId}`, {
+            const response = await axios.get(`https://memoiresignaturenumerique.onrender.com/api/archivage/exporter/${documentId}`, {
                 withCredentials: true,
                 responseType: 'blob'
             });
@@ -163,7 +163,7 @@ const ArchivesView = ({ setSnackbar }) => {
         if (!window.confirm("Confirmer la suppression de cette archive ?")) return;
         
         try {
-            await axios.delete(`https://localhost:8443/api/archivage/${archiveId}`, {
+            await axios.delete(`https://memoiresignaturenumerique.onrender.com/api/archivage/${archiveId}`, {
                 withCredentials: true
             });
             setSnackbar({ open: true, message: "Archive supprimée avec succès", severity: 'success' });
@@ -178,7 +178,7 @@ const ArchivesView = ({ setSnackbar }) => {
         if (!window.confirm("⚠️ Cette action supprimera définitivement toutes les archives expirées. Continuer ?")) return;
         
         try {
-            const response = await axios.delete('https://localhost:8443/api/archivage/purger', {
+            const response = await axios.delete('https://memoiresignaturenumerique.onrender.com/api/archivage/purger', {
                 withCredentials: true
             });
             setSnackbar({ 
