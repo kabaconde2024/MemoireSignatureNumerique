@@ -11,7 +11,6 @@ import org.springframework.mail.javamail.MimeMessageHelper;
 import org.springframework.stereotype.Service;
 import org.thymeleaf.context.Context;
 import org.thymeleaf.TemplateEngine;
-import org.springframework.beans.factory.annotation.Value;
 
 @Service
 public class ServiceNotification {
@@ -22,9 +21,13 @@ public class ServiceNotification {
     @Autowired
     private TemplateEngine templateEngine;
 
-    // ✅ Ajoutez cette variable pour l'URL du frontend
+    // ✅ Variable pour l'URL du frontend
     @Value("${app.frontend.url:https://memoire-frontend.onrender.com}")
     private String frontendUrl;
+
+    // ✅ Email validé sur ton compte Brevo (indispensable)
+    private final String EXPEDITEUR_EMAIL = "kabaconde5259@gmail.com";
+    private final String EXPEDITEUR_NOM = "Consulting Protected";
 
     public void envoyerLienFinalisation(String email, String token) {
         try {
@@ -42,7 +45,9 @@ public class ServiceNotification {
             helper.setTo(email);
             helper.setSubject("[Consulting Protected] Finalisez votre inscription");
             helper.setText(htmlContent, true);
-            helper.setFrom("kabaconde5259@gmail.com", "Consulting Protected");
+            
+            // ✅ AJOUT : Définition de l'expéditeur pour Brevo
+            helper.setFrom(EXPEDITEUR_EMAIL, EXPEDITEUR_NOM);
 
             ClassPathResource ressourceLogo = new ClassPathResource("static/images/logo.png");
             if (ressourceLogo.exists()) {
@@ -63,6 +68,9 @@ public class ServiceNotification {
 
             helper.setTo(email);
             helper.setSubject(" Code de sécurité - PROTECTED CONSULTING");
+            
+            // ✅ AJOUT : Définition de l'expéditeur pour Brevo
+            helper.setFrom(EXPEDITEUR_EMAIL, EXPEDITEUR_NOM);
 
             // ✅ Utilisez l'URL Render
             String lienCopieRapide = frontendUrl + "/copy-helper?code=" + code;
@@ -95,6 +103,10 @@ public class ServiceNotification {
         message.setTo(to);
         message.setSubject("Votre code de sécurité - MonPFE");
         message.setText("Voici votre code de vérification pour la réinitialisation de votre mot de passe : " + code);
+        
+        // ✅ AJOUT : Définition de l'expéditeur pour Brevo
+        message.setFrom(EXPEDITEUR_EMAIL);
+        
         mailSender.send(message);
     }
 
@@ -119,13 +131,13 @@ public class ServiceNotification {
             <img src="https://votre-domaine.com/logo-ngsign.png" alt="NGSign" style="width: 150px;"/>
             <div style="margin-top: 20px; background-color: #f9f9f9; padding: 40px;">
                 <img src="https://cdn-icons-png.flaticon.com/512/281/281760.png" width="80" />
-                <h2>Bonjour %s</h2>
-                <p>%s vous a envoyé une demande de signature pour le document <strong>%s</strong>.</p>
+                <h2>Bonjour %%s</h2>
+                <p>%%s vous a envoyé une demande de signature pour le document <strong>%%s</strong>.</p>
                 <div style="background-color: #e8f5e9; padding: 10px; border-radius: 8px; margin: 15px auto; display: inline-block;">
-                    <span style="font-weight: bold; color: %s;">%s</span>
+                    <span style="font-weight: bold; color: %%s;">%%s</span>
                 </div>
                 <p>Pour faire suite à cette invitation, nous vous invitons à suivre le bouton ci-dessous.</p>
-                <a href="%s" style="background-color: %s; color: black; padding: 15px 30px; text-decoration: none; border-radius: 5px; font-weight: bold; display: inline-block; margin-top: 20px;">SIGNER LE DOCUMENT</a>
+                <a href="%%s" style="background-color: %%s; color: black; padding: 15px 30px; text-decoration: none; border-radius: 5px; font-weight: bold; display: inline-block; margin-top: 20px;">SIGNER LE DOCUMENT</a>
             </div>
             <p style="color: #888; font-size: 12px; margin-top: 20px;">© 2026 NGSign Team</p>
         </div>
@@ -145,6 +157,10 @@ public class ServiceNotification {
             helper.setTo(emailDestinataire);
             helper.setSubject("[NGSign] " + nomExpediteur + " vous invite à signer un document - " + typeAffichage);
             helper.setText(contenuHtml, true);
+            
+            // ✅ AJOUT : Définition de l'expéditeur pour Brevo
+            helper.setFrom(EXPEDITEUR_EMAIL, EXPEDITEUR_NOM);
+            
             mailSender.send(message);
         } catch (MessagingException e) {
             e.printStackTrace();
