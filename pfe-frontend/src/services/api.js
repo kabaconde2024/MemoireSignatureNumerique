@@ -63,8 +63,8 @@ API.interceptors.response.use(
             document.cookie = 'accessToken=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;';
             
             // Redirection vers la page de connexion
-            if (window.location.pathname !== '/') {
-                window.location.href = '/';
+            if (window.location.pathname !== '/connexion') {
+                window.location.href = '/connexion';
             }
         }
         

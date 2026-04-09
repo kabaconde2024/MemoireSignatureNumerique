@@ -61,7 +61,7 @@ const PrivateRoute = ({ children, allowedRoles }) => {
     }
 
     if (!isAuthorized) {
-        return <Navigate to="/" replace />;
+        return <Navigate to="/connexion" replace />;
     }
 
     return children;
