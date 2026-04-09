@@ -12,6 +12,8 @@ import org.springframework.stereotype.Service;
 import org.thymeleaf.context.Context;
 import org.thymeleaf.TemplateEngine;
 
+import java.io.UnsupportedEncodingException;
+
 @Service
 public class ServiceNotification {
 
@@ -25,13 +27,12 @@ public class ServiceNotification {
     @Value("${app.frontend.url:https://memoire-frontend.onrender.com}")
     private String frontendUrl;
 
-    // ✅ Email validé sur ton compte Brevo (indispensable)
+    // ✅ Email validé sur ton compte Brevo
     private final String EXPEDITEUR_EMAIL = "kabaconde5259@gmail.com";
     private final String EXPEDITEUR_NOM = "Consulting Protected";
 
     public void envoyerLienFinalisation(String email, String token) {
         try {
-            // ✅ Utilisez l'URL Render au lieu de localhost
             String lien = frontendUrl + "/finaliser-inscription?token=" + token + "&email=" + email;
             Context context = new Context();
             context.setVariable("lien", lien);
@@ -46,7 +47,7 @@ public class ServiceNotification {
             helper.setSubject("[Consulting Protected] Finalisez votre inscription");
             helper.setText(htmlContent, true);
             
-            // ✅ AJOUT : Définition de l'expéditeur pour Brevo
+            // ✅ Correction : Ajout de la gestion d'encodage pour l'expéditeur
             helper.setFrom(EXPEDITEUR_EMAIL, EXPEDITEUR_NOM);
 
             ClassPathResource ressourceLogo = new ClassPathResource("static/images/logo.png");
@@ -55,9 +56,9 @@ public class ServiceNotification {
             }
 
             mailSender.send(message);
-        } catch (Exception e) {
+        } catch (MessagingException | UnsupportedEncodingException e) {
             e.printStackTrace();
-            throw new RuntimeException("Erreur envoi email : " + e.getMessage());
+            throw new RuntimeException("Erreur envoi email finalisation : " + e.getMessage());
         }
     }
 
@@ -69,11 +70,8 @@ public class ServiceNotification {
             helper.setTo(email);
             helper.setSubject(" Code de sécurité - PROTECTED CONSULTING");
             
-            // ✅ AJOUT : Définition de l'expéditeur pour Brevo
+            // ✅ Correction : Ajout de la gestion d'encodage
             helper.setFrom(EXPEDITEUR_EMAIL, EXPEDITEUR_NOM);
-
-            // ✅ Utilisez l'URL Render
-            String lienCopieRapide = frontendUrl + "/copy-helper?code=" + code;
 
             String contenuHtml = "<div style='font-family: \"Segoe UI\", Tahoma, Geneva, Verdana, sans-serif; max-width: 500px; margin: auto; border: 1px solid #e2e8f0; border-radius: 16px; overflow: hidden;'>" +
                     "<div style='background-color: #0b1e39; padding: 20px; text-align: center;'>" +
@@ -93,8 +91,9 @@ public class ServiceNotification {
 
             helper.setText(contenuHtml, true);
             mailSender.send(message);
-        } catch (Exception e) {
+        } catch (MessagingException | UnsupportedEncodingException e) {
             e.printStackTrace();
+            throw new RuntimeException("Erreur envoi email MFA : " + e.getMessage());
         }
     }
 
@@ -104,14 +103,12 @@ public class ServiceNotification {
         message.setSubject("Votre code de sécurité - MonPFE");
         message.setText("Voici votre code de vérification pour la réinitialisation de votre mot de passe : " + code);
         
-        // ✅ AJOUT : Définition de l'expéditeur pour Brevo
         message.setFrom(EXPEDITEUR_EMAIL);
         
         mailSender.send(message);
     }
 
     public void envoyerLienSignature(String emailDestinataire, String nomExpediteur, String nomDoc, String token, String typeSignature) {
-        // ✅ Utilisez l'URL Render
         String lien;
         String typeAffichage;
         String couleurBouton;
@@ -128,16 +125,15 @@ public class ServiceNotification {
 
         String contenuHtml = String.format("""
         <div style="font-family: Arial, sans-serif; text-align: center; border: 1px solid #eee; padding: 20px;">
-            <img src="https://votre-domaine.com/logo-ngsign.png" alt="NGSign" style="width: 150px;"/>
             <div style="margin-top: 20px; background-color: #f9f9f9; padding: 40px;">
                 <img src="https://cdn-icons-png.flaticon.com/512/281/281760.png" width="80" />
-                <h2>Bonjour %%s</h2>
-                <p>%%s vous a envoyé une demande de signature pour le document <strong>%%s</strong>.</p>
+                <h2>Bonjour %s</h2>
+                <p>%s vous a envoyé une demande de signature pour le document <strong>%s</strong>.</p>
                 <div style="background-color: #e8f5e9; padding: 10px; border-radius: 8px; margin: 15px auto; display: inline-block;">
-                    <span style="font-weight: bold; color: %%s;">%%s</span>
+                    <span style="font-weight: bold; color: %s;">%s</span>
                 </div>
                 <p>Pour faire suite à cette invitation, nous vous invitons à suivre le bouton ci-dessous.</p>
-                <a href="%%s" style="background-color: %%s; color: black; padding: 15px 30px; text-decoration: none; border-radius: 5px; font-weight: bold; display: inline-block; margin-top: 20px;">SIGNER LE DOCUMENT</a>
+                <a href="%s" style="background-color: %s; color: black; padding: 15px 30px; text-decoration: none; border-radius: 5px; font-weight: bold; display: inline-block; margin-top: 20px;">SIGNER LE DOCUMENT</a>
             </div>
             <p style="color: #888; font-size: 12px; margin-top: 20px;">© 2026 NGSign Team</p>
         </div>
@@ -158,12 +154,13 @@ public class ServiceNotification {
             helper.setSubject("[NGSign] " + nomExpediteur + " vous invite à signer un document - " + typeAffichage);
             helper.setText(contenuHtml, true);
             
-            // ✅ AJOUT : Définition de l'expéditeur pour Brevo
+            // ✅ Correction : Ajout de la gestion d'encodage (Ligne 162/163)
             helper.setFrom(EXPEDITEUR_EMAIL, EXPEDITEUR_NOM);
             
             mailSender.send(message);
-        } catch (MessagingException e) {
+        } catch (MessagingException | UnsupportedEncodingException e) {
             e.printStackTrace();
+            throw new RuntimeException("Erreur envoi email signature : " + e.getMessage());
         }
     }
 }
