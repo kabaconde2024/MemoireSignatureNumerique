@@ -39,126 +39,88 @@ const Connexion = ({ onSwitch, onLoginSuccess }) => {
         }
 
         const activeRole = role || localStorage.getItem('role'); 
-        console.log("[Auth] Redirection finale vers le dashboard pour :", activeRole);
 
-        if (activeRole === 'SUPER_ADMIN') {
-            navigate('/super-admin-dashboard');
-        } else if (activeRole === 'ADMIN_ENTREPRISE') {
-            navigate('/admin-dashboard');
-        } else if (activeRole === 'EMPLOYE') { 
-            navigate('/employe-dashboard');
-        } else if (activeRole === 'UTILISATEUR') {
-            navigate('/user-dashboard');
-        } else {
-            console.warn("[Auth] Rôle inconnu, redirection par défaut vers /user-dashboard");
-            navigate('/user-dashboard'); 
-        }
+        if (activeRole === 'SUPER_ADMIN') navigate('/super-admin-dashboard');
+        else if (activeRole === 'ADMIN_ENTREPRISE') navigate('/admin-dashboard');
+        else if (activeRole === 'EMPLOYE') navigate('/employe-dashboard');
+        else if (activeRole === 'UTILISATEUR') navigate('/user-dashboard');
+        else navigate('/user-dashboard');
     };
 
-const handleLogin = async () => {
-    setLoading(true);
-    setError('');
-    try {
-        const response = await API.post('/connexion', { 
-            email: email.trim().toLowerCase(), 
-            motDePasse 
-        });
-        
-        // ✅ AJOUTER CETTE LIGNE - Sauvegarder le token JWT
-        if (response.data.token) {
-            localStorage.setItem('accessToken', response.data.token);
-        }
-        
-        localStorage.setItem('role', response.data.role);
-        localStorage.setItem('user_info', JSON.stringify({
-            prenom: response.data.prenom,
-            nom: response.data.nom,
-            organisation: response.data.organisation,
-            email: email
-        }));
+    const handleLogin = async () => {
+        setLoading(true);
+        setError('');
+        try {
+            const response = await API.post('/connexion', { 
+                email: email.trim().toLowerCase(), 
+                motDePasse 
+            });
+            
+            // Le cookie accessToken est posé automatiquement par le Backend ici
+            
+            if (response.data.necessiteMfa) {
+                setIsMfaRequired(true);
+            } else {
+                localStorage.setItem('role', response.data.role);
+                localStorage.setItem('user_info', JSON.stringify({
+                    prenom: response.data.prenom,
+                    nom: response.data.nom,
+                    email: email
+                }));
+                if (onLoginSuccess) onLoginSuccess();
+                redirectUserByRole(response.data.role);
+            }
+        } catch (err) {
+            setError(err.response?.data?.erreur || "Identifiants incorrects.");
+        } finally { setLoading(false); }
+    };
 
-        if (response.data.necessiteMfa) {
-            setIsMfaRequired(true);
-        } else {
+    const handleVerifyOtp = async () => {
+        setLoading(true);
+        setError('');
+        try {
+            const response = await API.post('/verifier-otp', { 
+                email: email.trim().toLowerCase(), 
+                code: otpCode.trim() 
+            });
+            
+            // Le cookie accessToken est posé par le backend lors de la validation OTP
+            
+            localStorage.setItem('role', response.data.role);
+            localStorage.setItem('user_info', JSON.stringify({
+                prenom: response.data.prenom,
+                nom: response.data.nom,
+                organisation: response.data.organisationNom,
+                email: response.data.email
+            }));
+
             if (onLoginSuccess) onLoginSuccess();
-            setTimeout(() => redirectUserByRole(response.data.role), 200);
-        }
-    } catch (err) {
-        setError(err.response?.data?.erreur || "Identifiants incorrects ou compte non activé.");
-    } finally { setLoading(false); }
-};
+            setTimeout(() => redirectUserByRole(response.data.role), 100);
 
- const handleVerifyOtp = async () => {
-    setLoading(true);
-    setError('');
-    try {
-        const response = await API.post('/verifier-otp', { 
-            email: email.trim().toLowerCase(), 
-            code: otpCode.trim() 
-        });
-        
-        // ✅ AJOUTER CETTE LIGNE - Sauvegarder le token JWT
-        if (response.data.token) {
-            localStorage.setItem('accessToken', response.data.token);
-        }
-        
-        localStorage.setItem('role', response.data.role);
-        localStorage.setItem('userId', response.data.userId); 
-        localStorage.setItem('organisationId', response.data.organisationId); 
-        localStorage.setItem('user_info', JSON.stringify({
-            prenom: response.data.prenom,
-            nom: response.data.nom,
-            organisation: response.data.organisationNom,
-            email: response.data.email
-        }));
+        } catch (err) {
+            setError("Code OTP invalide ou expiré.");
+        } finally { setLoading(false); }
+    };
 
-        if (onLoginSuccess) onLoginSuccess();
-        
-        setTimeout(() => {
+    const handleGoogleSuccess = async (googleData) => {
+        setLoading(true);
+        setError('');
+        try {
+            const response = await API.post('/auth/google', { token: googleData.credential });
+
+            localStorage.setItem('role', response.data.role);
+            localStorage.setItem('user_info', JSON.stringify({
+                prenom: response.data.prenom,
+                nom: response.data.nom,
+                email: response.data.email
+            }));
+
+            if (onLoginSuccess) onLoginSuccess();
             redirectUserByRole(response.data.role);
-        }, 800);
-
-    } catch (err) {
-        setError("Code OTP invalide ou expiré.");
-    } finally { setLoading(false); }
-};
-
-  const handleGoogleSuccess = async (googleData) => {
-    setLoading(true);
-    setError('');
-    try {
-        console.log("Envoi du token Google au Backend Spring Boot...");
-        
-        const response = await API.post('/auth/google', { 
-            token: googleData.credential 
-        });
-
-        // ✅ AJOUTER CETTE LIGNE - Sauvegarder le token JWT
-        if (response.data.token) {
-            localStorage.setItem('accessToken', response.data.token);
-        }
-
-        localStorage.setItem('role', response.data.role);
-        localStorage.setItem('user_info', JSON.stringify({
-            prenom: response.data.prenom,
-            nom: response.data.nom,
-            organisation: response.data.organisationNom,
-            email: response.data.email
-        }));
-
-        if (onLoginSuccess) onLoginSuccess();
-
-        setTimeout(() => {
-            redirectUserByRole(response.data.role);
-        }, 500);
-
-    } catch (err) {
-        console.error("Erreur d'authentification Google Backend:", err);
-        setError(err.response?.data?.erreur || "Échec de la connexion avec Google.");
-    } finally {
-        setLoading(false);
-    }
-};
+        } catch (err) {
+            setError("Échec de la connexion avec Google.");
+        } finally { setLoading(false); }
+    };
 
     return (
         <Box sx={{ p: 4, bgcolor: 'rgba(255, 255, 255, 0.95)', backdropFilter: 'blur(15px)', borderRadius: 6 }}>
@@ -174,49 +136,32 @@ const handleLogin = async () => {
             {!isMfaRequired ? (
                 <Box>
                     <Box sx={{ mb: 3, display: 'flex', justifyContent: 'center' }}>
-                        {/* ✅ Native Google Button sans les doublons JS d'initialisation */}
                         <GoogleLoginNative onSuccess={handleGoogleSuccess} />
                     </Box>
-
                     <Divider sx={{ mb: 3 }}>
-                        <Typography variant="caption" sx={{ color: '#000', fontWeight: 600, px: 1 }}>
-                            OU AVEC EMAIL
-                        </Typography>
+                        <Typography variant="caption" sx={{ color: '#000', fontWeight: 600, px: 1 }}>OU AVEC EMAIL</Typography>
                     </Divider>
-
-                    <Box>
-                        <TextField 
-                            fullWidth label="Email" margin="normal" required
-                            value={email} onChange={(e) => setEmail(e.target.value)}
-                            InputProps={{ startAdornment: <InputAdornment position="start"><Email sx={{ color: '#000' }} /></InputAdornment> }}
-                            sx={fieldStyle}
-                        />
-                        <TextField 
-                            fullWidth label="Mot de passe" type="password" margin="normal" required
-                            value={motDePasse} onChange={(e) => setMotDePasse(e.target.value)}
-                            InputProps={{ startAdornment: <InputAdornment position="start"><Lock sx={{ color: '#000' }} /></InputAdornment> }}
-                            sx={fieldStyle}
-                        />
-                        
-                        <Button 
-                            fullWidth variant="contained" type="button" onClick={handleLogin} disabled={loading}
-                            sx={{ mt: 3, py: 2, bgcolor: '#1c1212', fontWeight: '900', "&:hover": { bgcolor: '#333' } }}
-                        >
-                            {loading ? <CircularProgress size={24} color="inherit" /> : "Se connecter"}
-                        </Button>
-
-                        <Box sx={{ mt: 3, display: 'flex', flexDirection: 'column', gap: 1, alignItems: 'center' }}>
-                            <Link onClick={() => navigate('/mot-de-passe-oublie')} sx={{ cursor: 'pointer', color: '#3b82f6', fontWeight: 700, fontSize: '0.85rem', textDecoration: 'none' }}>
-                                Mot de passe oublié ?
-                            </Link>
-
-                            <Link 
-                                onClick={() => onSwitch ? onSwitch() : navigate('/inscription')}
-                                sx={{ cursor: 'pointer', color: '#000', fontWeight: 700, fontSize: '0.85rem', opacity: 0.7, textDecoration: 'none' }}
-                            >
-                                Pas de compte ? Créer un profil
-                            </Link>
-                        </Box>
+                    <TextField 
+                        fullWidth label="Email" margin="normal" required value={email}
+                        onChange={(e) => setEmail(e.target.value)}
+                        InputProps={{ startAdornment: <InputAdornment position="start"><Email sx={{ color: '#000' }} /></InputAdornment> }}
+                        sx={fieldStyle}
+                    />
+                    <TextField 
+                        fullWidth label="Mot de passe" type="password" margin="normal" required value={motDePasse}
+                        onChange={(e) => setMotDePasse(e.target.value)}
+                        InputProps={{ startAdornment: <InputAdornment position="start"><Lock sx={{ color: '#000' }} /></InputAdornment> }}
+                        sx={fieldStyle}
+                    />
+                    <Button 
+                        fullWidth variant="contained" onClick={handleLogin} disabled={loading}
+                        sx={{ mt: 3, py: 2, bgcolor: '#1c1212', fontWeight: '900', "&:hover": { bgcolor: '#333' } }}
+                    >
+                        {loading ? <CircularProgress size={24} color="inherit" /> : "Se connecter"}
+                    </Button>
+                    <Box sx={{ mt: 3, display: 'flex', flexDirection: 'column', gap: 1, alignItems: 'center' }}>
+                        <Link onClick={() => navigate('/mot-de-passe-oublie')} sx={{ cursor: 'pointer', color: '#3b82f6', fontWeight: 700, fontSize: '0.85rem', textDecoration: 'none' }}>Mot de passe oublié ?</Link>
+                        <Link onClick={() => onSwitch ? onSwitch() : navigate('/inscription')} sx={{ cursor: 'pointer', color: '#000', fontWeight: 700, fontSize: '0.85rem', opacity: 0.7, textDecoration: 'none' }}>Pas de compte ? Créer un profil</Link>
                     </Box>
                 </Box>
             ) : (
@@ -225,25 +170,18 @@ const handleLogin = async () => {
                         Entrez le code envoyé à <strong>{email}</strong>
                     </Typography>
                     <TextField 
-                        fullWidth label="Code OTP" margin="normal" required
-                        value={otpCode}
+                        fullWidth label="Code OTP" margin="normal" required value={otpCode}
                         onChange={(e) => setOtpCode(e.target.value)}
                         InputProps={{ startAdornment: <InputAdornment position="start"><Security sx={{ color: '#000' }} /></InputAdornment> }}
                         sx={fieldStyle}
                     />
                     <Button 
-                        fullWidth variant="contained" type="button" onClick={handleVerifyOtp} disabled={loading}
+                        fullWidth variant="contained" onClick={handleVerifyOtp} disabled={loading}
                         sx={{ mt: 3, py: 2, bgcolor: '#3b82f6', fontWeight: '900' }}
                     >
                         {loading ? <CircularProgress size={24} color="inherit" /> : "Vérifier le code"}
                     </Button>
-                    <Button 
-                        fullWidth variant="text" type="button"
-                        onClick={() => setIsMfaRequired(false)}
-                        sx={{ mt: 1, color: '#000', fontSize: '0.75rem' }}
-                    >
-                        Retour
-                    </Button>
+                    <Button fullWidth variant="text" onClick={() => setIsMfaRequired(false)} sx={{ mt: 1, color: '#000', fontSize: '0.75rem' }}>Retour</Button>
                 </Box>
             )}
         </Box>
