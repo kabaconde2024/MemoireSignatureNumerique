@@ -33,7 +33,7 @@ const Connexion = ({ onSwitch, onLoginSuccess }) => {
     };
 
     const redirectUserByRole = (role) => {
-        if (redirectPath && redirectPath !== '/' && !redirectPath.includes('/')) {
+        if (redirectPath && redirectPath !== '/' && !redirectPath.includes('/connexion')) {
             navigate(decodeURIComponent(redirectPath));
             return;
         }
@@ -51,7 +51,7 @@ const Connexion = ({ onSwitch, onLoginSuccess }) => {
         setLoading(true);
         setError('');
         try {
-            const response = await API.post('/', { 
+            const response = await API.post('/connexion', { 
                 email: email.trim().toLowerCase(), 
                 motDePasse 
             });
