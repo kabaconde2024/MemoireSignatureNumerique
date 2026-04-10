@@ -7,7 +7,7 @@ const getBaseURL = () => {
     return `${process.env.REACT_APP_API_URL}/api`;
   }
   // Développement local
-  return 'http://localhost:8080/api';
+  return 'https://memoiresignaturenumerique.onrender.com/api';
 };
 
 const API = axios.create({
@@ -55,7 +55,7 @@ API.interceptors.response.use(
             // Supprimer le cookie aussi
             document.cookie = 'accessToken=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;';
             
-            window.location.href = '/connexion';
+            window.location.href = '/';
         }
         
         // Gestion des erreurs 403 (non autorisé)

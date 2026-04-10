@@ -24,43 +24,46 @@ public class ServiceGestionClesHSM {
     private Provider fournisseurPKCS11;
 
 
-   private Provider initialiserFournisseur() {
+private Provider initialiserFournisseur() {
     if (fournisseurPKCS11 == null) {
         try {
             String os = System.getProperty("os.name").toLowerCase();
-            String configContent;
+            StringBuilder configContent = new StringBuilder();
+            
+            configContent.append("name = SoftHSM2\n");
 
             if (os.contains("win")) {
-                // Version locale (Windows)
-                configContent = "name = SoftHSM2\n" +
-                                "library = C:/SoftHSM2/lib/softhsm2-x64.dll\n" +
-                                "slot = 2145520111";
+                // Ta config locale
+                configContent.append("library = C:/SoftHSM2/lib/softhsm2-x64.dll\n");
+                configContent.append("slot = 2145520111\n");
             } else {
-                // Version Render (Linux)
-                configContent = "name = SoftHSM2\n" +
-                                "library = /usr/lib/x86_64-linux-gnu/softhsm/libsofthsm2.so\n" +
-                                "slot = 0";
+                // Ta config Render (Linux)
+                configContent.append("library = /usr/lib/x86_64-linux-gnu/softhsm/libsofthsm2.so\n");
+                configContent.append("slot = 0\n");
             }
 
-            // Création d'un fichier temporaire de config pour SunPKCS11
-            java.io.File tempConfig = java.io.File.createTempFile("softhsm2_runtime", ".cfg");
-            java.nio.file.Files.writeString(tempConfig.toPath(), configContent);
+            // TECHNIQUE CRUCIALE : On crée un fichier temporaire sur le disque de Render
+            // Cela garantit que Java trouve le fichier avec un chemin absolu
+            java.io.File tempConfig = java.io.File.createTempFile("softhsm2_render", ".cfg");
+            java.nio.file.Files.writeString(tempConfig.toPath(), configContent.toString());
             
-            String configPath = tempConfig.getAbsolutePath();
+            String absolutePath = tempConfig.getAbsolutePath();
+            System.out.println("🚀 Initialisation PKCS11 avec : " + absolutePath);
 
-            // Initialisation du provider
-            fournisseurPKCS11 = Security.getProvider("SunPKCS11");
-            fournisseurPKCS11 = fournisseurPKCS11.configure(configPath);
+            // Chargement du provider SunPKCS11
+            Provider p = Security.getProvider("SunPKCS11");
+            fournisseurPKCS11 = p.configure(absolutePath);
             Security.addProvider(fournisseurPKCS11);
 
+            // Test de chargement immédiat
             KeyStore ks = KeyStore.getInstance("PKCS11", fournisseurPKCS11);
             ks.load(null, pinUtilisateur.toCharArray());
-
-            System.out.println("✅ HSM connecté avec succès sur " + (os.contains("win") ? "Windows" : "Linux"));
+            
+            System.out.println("✅ HSM Ready !");
 
         } catch (Exception e) {
-            System.err.println("❌ Erreur HSM: " + e.getMessage());
-            e.printStackTrace();
+            System.err.println("❌ Erreur critique PKCS11 : " + e.getMessage());
+            throw new RuntimeException("Erreur PKI : PKCS11 non trouvé ou mal configuré", e);
         }
     }
     return fournisseurPKCS11;
