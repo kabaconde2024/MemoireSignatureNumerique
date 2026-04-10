@@ -57,52 +57,61 @@ public class OtpSignatureSimpleControleur {
 
 }
 */
-
+// ... imports existants ...
 import org.springframework.mail.SimpleMailMessage;
 import org.springframework.mail.JavaMailSender;
-import org.springframework.beans.factory.annotation.Value;
 
 @RestController
 @RequestMapping("/api/signature")
-@CrossOrigin(origins = "*") // En production, remplace par ton URL frontend
+@CrossOrigin(origins = "*") 
 public class OtpSignatureSimpleControleur {
 
     @Autowired private InvitationRepository invitationRepository;
-    @Autowired private ServiceSmsOtp smsService; // Pour la génération de l'OTP
+    @Autowired private ServiceSmsOtp otpService; // Renommé par souci de clarté
     @Autowired private JavaMailSender mailSender;
     @Autowired private ServiceConfiguration serviceConfiguration;
 
-    // Récupère l'expéditeur configuré (souvent le username Brevo)
     @Value("${spring.mail.username}")
     private String mailFrom;
-// Dans OtpSignatureSimpleControleur.java
 
-@PostMapping("/send-otp")
-public ResponseEntity<?> sendOtp(@RequestParam String token) {
-    try {
-        InvitationSignature inv = invitationRepository.findByTokenSignature(token)
-                .orElseThrow(() -> new RuntimeException("Invitation introuvable"));
+    @PostMapping("/send-otp")
+    public ResponseEntity<?> sendOtp(@RequestParam String token) {
+        try {
+            InvitationSignature inv = invitationRepository.findByTokenSignature(token)
+                    .orElseThrow(() -> new RuntimeException("Invitation introuvable"));
 
-        // On utilise l'email pour la génération et le stockage de l'OTP
-        String emailDestinataire = inv.getEmailDestinataire(); 
-        
-        int otpLongueur = Integer.parseInt(serviceConfiguration.getValeur("signature.otp.longueur"));
-        
-        // On génère l'OTP lié à l'email (clé du ConcurrentHashMap)
-        String code = smsService.generateOtp(emailDestinataire, otpLongueur);
+            // Validation du statut pour la sécurité
+            if (!"EN_ATTENTE".equals(inv.getStatut())) {
+                return ResponseEntity.badRequest().body(Map.of("erreur", "Cette invitation n'est plus active."));
+            }
 
-        SimpleMailMessage message = new SimpleMailMessage();
-        message.setFrom(mailFrom);
-        message.setTo(emailDestinataire);
-        message.setSubject("🔑 Code de sécurité TrustSign");
-        message.setText("Bonjour " + inv.getNomSignataire() + ",\n\n" +
-                "Votre code OTP pour la signature du document est : " + code);
+            String emailDestinataire = inv.getEmailDestinataire();
+            int otpLongueur = 6; // Valeur par défaut
+            
+            try {
+                otpLongueur = Integer.parseInt(serviceConfiguration.getValeur("signature.otp.longueur"));
+            } catch (Exception e) {
+                // Fallback si la config manque
+            }
 
-        mailSender.send(message);
-        return ResponseEntity.ok(Map.of("message", "Code envoyé à " + emailDestinataire));
-    } catch (Exception e) {
-        return ResponseEntity.status(500).body(Map.of("erreur", e.getMessage()));
+            // Génération de l'OTP (stocké dans le ConcurrentHashMap du service)
+            String code = otpService.generateOtp(emailDestinataire, otpLongueur);
+
+            // Préparation de l'e-mail
+            SimpleMailMessage message = new SimpleMailMessage();
+            message.setFrom(mailFrom);
+            message.setTo(emailDestinataire);
+            message.setSubject("🔑 Code de sécurité TrustSign");
+            message.setText("Bonjour " + inv.getNomSignataire() + ",\n\n" +
+                    "Pour finaliser votre signature numérique, voici votre code de validation : " + code + 
+                    "\n\nCe code expirera prochainement.");
+
+            mailSender.send(message);
+            
+            return ResponseEntity.ok(Map.of("message", "Code envoyé avec succès à l'adresse enregistrée."));
+            
+        } catch (Exception e) {
+            return ResponseEntity.status(500).body(Map.of("erreur", "Erreur lors de l'envoi : " + e.getMessage()));
+        }
     }
-}
-
 }
