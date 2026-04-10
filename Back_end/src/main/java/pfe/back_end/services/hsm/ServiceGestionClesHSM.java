@@ -33,52 +33,43 @@ public class ServiceGestionClesHSM {
     public Provider getFournisseurPKCS11() {
         return initialiserFournisseur();
     }
+private Provider initialiserFournisseur() {
+    if (fournisseurPKCS11 == null) {
+        try {
+            String os = System.getProperty("os.name").toLowerCase();
+            StringBuilder configContent = new StringBuilder();
+            configContent.append("name = SoftHSM2\n");
 
-    /**
-     * Initialise le provider SunPKCS11 avec la configuration SoftHSM2
-     */
-    private Provider initialiserFournisseur() {
-        if (fournisseurPKCS11 == null) {
-            try {
-                String os = System.getProperty("os.name").toLowerCase();
-                StringBuilder configContent = new StringBuilder();
-                configContent.append("name = SoftHSM2\n");
-
-                if (os.contains("win")) {
-                    configContent.append("library = C:/SoftHSM2/lib/softhsm2-x64.dll\n");
-                    configContent.append("slot = 2145520111\n");
-                } else {
-                    // Configuration Linux / Render (Chemin standard après apt-get install)
-                    String pathA = "/usr/lib/x86_64-linux-gnu/softhsm/libsofthsm2.so";
-                    String pathB = "/usr/lib/softhsm/libsofthsm2.so";
-                    File libFile = new File(pathA);
-                    String finalPath = libFile.exists() ? pathA : pathB;
-
-                    configContent.append("library = ").append(finalPath).append("\n");
-                    // Utilisation de slotListIndex pour plus de flexibilité en conteneur
-                    configContent.append("slotListIndex = 0\n");
-                }
-
-                // Création d'un fichier de config persistant dans le répertoire de l'app sur Render
-                File configDir = new File("/app/config");
-                if (!configDir.exists()) configDir.mkdirs();
-                
-                File tempConfig = new File("/app/config/sunpkcs11.cfg");
-                Files.writeString(tempConfig.toPath(), configContent.toString());
-                
-                // Configuration du provider SunPKCS11 (compatible Java 9+)
-                Provider p = Security.getProvider("SunPKCS11");
-                fournisseurPKCS11 = p.configure(tempConfig.getAbsolutePath());
-                Security.addProvider(fournisseurPKCS11);
-
-                System.out.println("✅ HSM (SoftHSM2) initialisé avec succès sur : " + os);
-            } catch (Exception e) {
-                System.err.println("❌ Erreur critique Initialisation HSM : " + e.getMessage());
-                throw new RuntimeException("Infrastructure PKI indisponible", e);
+            if (os.contains("win")) {
+                configContent.append("library = C:/SoftHSM2/lib/softhsm2-x64.dll\n");
+                configContent.append("slot = 2145520111\n");
+            } else {
+                // IMPORTANT : Sur Render, on utilise la lib installée mais NOTRE config
+                configContent.append("library = /usr/lib/x86_64-linux-gnu/softhsm/libsofthsm2.so\n");
+                configContent.append("slotListIndex = 0\n");
             }
+
+            File tempConfig = File.createTempFile("sunpkcs11", ".cfg");
+            Files.writeString(tempConfig.toPath(), configContent.toString());
+            
+            Provider p = Security.getProvider("SunPKCS11");
+            fournisseurPKCS11 = p.configure(tempConfig.getAbsolutePath());
+            
+            // On vérifie si déjà présent pour éviter les doublons
+            if (Security.getProvider(fournisseurPKCS11.getName()) != null) {
+                Security.removeProvider(fournisseurPKCS11.getName());
+            }
+            Security.addProvider(fournisseurPKCS11);
+
+            System.out.println("✅ HSM initialisé avec succès");
+        } catch (Exception e) {
+            // Loggez l'erreur complète pour la voir dans Render
+            e.printStackTrace(); 
+            throw new RuntimeException("Erreur PKCS11 : " + e.getMessage());
         }
-        return fournisseurPKCS11;
     }
+    return fournisseurPKCS11;
+}
 
     public void genererIdentiteSecurisee(String aliasUtilisateur) throws Exception {
         KeyStore ks = getKeyStore();

@@ -31,8 +31,10 @@ RUN mkdir -p /app/softhsm_tokens
 RUN echo "directories.tokendir = /app/softhsm_tokens" > /app/softhsm2.conf
 
 # Initialisation du Token (Slot 0) 
-RUN SOFTHSM2_CONF=/app/softhsm2.conf softhsm2-util --init-token --slot 0 --label "MonTokenPFE" --pin 1234 --so-pin 1234
+#RUN SOFTHSM2_CONF=/app/softhsm2.conf softhsm2-util --init-token --slot 0 --label "MonTokenPFE" --pin 1234 --so-pin 1234
 
+# Initialisation plus robuste pour garantir le slot
+RUN SOFTHSM2_CONF=/app/softhsm2.conf softhsm2-util --init-token --free --label "MonTokenPFE" --pin 1234 --so-pin 1234
 # Permissions cruciales pour l'accès aux clés par l'application Java
 RUN chmod -R 777 /app/softhsm_tokens /app/softhsm2.conf
 
