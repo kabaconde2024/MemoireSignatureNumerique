@@ -38,11 +38,11 @@ const StatsView = ({ setSnackbar }) => {
         const fetchStats = async () => {
             try {
                 const [usersRes, certRes, docsRes, activitiesRes, signaturesRes] = await Promise.all([
-                    axios.get('https://localhost:8443/api/admin/stats/utilisateurs', { withCredentials: true }),
-                    axios.get('https://localhost:8443/api/admin/pki/stats', { withCredentials: true }),
-                    axios.get('https://localhost:8443/api/admin/stats/documents', { withCredentials: true }),
-                    axios.get('https://localhost:8443/api/admin/stats/activites', { withCredentials: true }),
-                    axios.get('https://localhost:8443/api/admin/stats/signatures', { withCredentials: true })
+                    axios.get('https://memoiresignaturenumerique.onrender.com/api/admin/stats/utilisateurs', { withCredentials: true }),
+                    axios.get('https://memoiresignaturenumerique.onrender.com/api/admin/pki/stats', { withCredentials: true }),
+                    axios.get('https://memoiresignaturenumerique.onrender.com/api/admin/stats/documents', { withCredentials: true }),
+                    axios.get('https://memoiresignaturenumerique.onrender.com/api/admin/stats/activites', { withCredentials: true }),
+                    axios.get('https://memoiresignaturenumerique.onrender.com/api/admin/stats/signatures', { withCredentials: true })
                 ]);
                 
                 setStats({
