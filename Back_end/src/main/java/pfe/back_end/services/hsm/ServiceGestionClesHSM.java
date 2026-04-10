@@ -36,11 +36,22 @@ private Provider initialiserFournisseur() {
                 // Ta config locale
                 configContent.append("library = C:/SoftHSM2/lib/softhsm2-x64.dll\n");
                 configContent.append("slot = 2145520111\n");
-            } else {
-                // Ta config Render (Linux)
-                configContent.append("library = /usr/lib/x86_64-linux-gnu/softhsm/libsofthsm2.so\n");
-                configContent.append("slot = 0\n");
-            }
+            } // ... dans ta méthode initialiserFournisseur()
+} else {
+    // Ta config Render (Linux)
+    // On teste le chemin A, si pas là, on utilise le chemin B
+    String pathA = "/usr/lib/x86_64-linux-gnu/softhsm/libsofthsm2.so";
+    String pathB = "/usr/lib/softhsm/libsofthsm2.so";
+    
+    java.io.File libFile = new java.io.File(pathA);
+    String finalPath = libFile.exists() ? pathA : pathB;
+
+    System.out.println("🔍 Bibliothèque SoftHSM2 trouvée sur : " + finalPath);
+    
+    configContent.append("library = ").append(finalPath).append("\n");
+    configContent.append("slot = 0\n");
+}
+
 
             // TECHNIQUE CRUCIALE : On crée un fichier temporaire sur le disque de Render
             // Cela garantit que Java trouve le fichier avec un chemin absolu
