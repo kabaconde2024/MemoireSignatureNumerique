@@ -53,7 +53,10 @@
             <artifactId>spring-boot-starter-data-mongodb</artifactId>
         </dependency>
 
-
+<dependency>
+    <groupId>org.springframework.boot</groupId>
+    <artifactId>spring-boot-starter-mail</artifactId>
+</dependency>
         <!-- iText 7 PDF/A - AJOUTER CETTE DÉPENDANCE -->
         <dependency>
             <groupId>com.itextpdf</groupId>
