@@ -48,7 +48,7 @@ public class SignatureSimpleControleur {
             byte[] pdfSigne = serviceSignatureSimple.signerDocumentSimple(
                     pdfOriginal,                                    // pdfBytes
                     request.getNom(),                               // nom
-                    inv.getTelephoneSignataire(),                   // tel
+                 inv.getEmailDestinataire(), // <--- UTILISER L'EMAIL ICI
                     request.getOtp(),                               // otp
                     request.getX(),                                 // x
                     request.getY(),                                 // y
