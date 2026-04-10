@@ -5,7 +5,7 @@ import org.springframework.beans.factory.annotation.Value; // 👈 IMPORT MANQUA
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.mail.SimpleMailMessage;
-import org.springframework.mail.JavaMailSender; // 👈 VÉRIFIE QUE LE POM.XML EST BIEN ENREGISTRÉ
+import org.springframework.mail.javamail.JavaMailSender;
 import pfe.back_end.modeles.entites.InvitationSignature;
 import pfe.back_end.repositories.sql.InvitationRepository;
 import pfe.back_end.services.configuration.ServiceConfiguration;
