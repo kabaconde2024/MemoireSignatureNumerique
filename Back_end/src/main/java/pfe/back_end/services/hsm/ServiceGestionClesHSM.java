@@ -9,6 +9,12 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import pfe.back_end.modeles.entites.Utilisateur;
 
+// --- AJOUTEZ CES IMPORTS ICI ---
+import java.io.File;
+import java.nio.file.Files;
+import java.io.ByteArrayInputStream;
+// ------------------------------
+
 import java.math.BigInteger;
 import java.security.*;
 import java.security.cert.Certificate;
