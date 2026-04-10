@@ -39,29 +39,29 @@ public class ServiceGestionClesHSM {
                     configContent.append("library = C:/SoftHSM2/lib/softhsm2-x64.dll\n");
                     configContent.append("slot = 2145520111\n");
                 } else {
-                    // Configuration spécifique pour Render (Linux)
+                    // Configuration Linux / Render
                     String pathA = "/usr/lib/x86_64-linux-gnu/softhsm/libsofthsm2.so";
                     String pathB = "/usr/lib/softhsm/libsofthsm2.so";
                     File libFile = new File(pathA);
                     String finalPath = libFile.exists() ? pathA : pathB;
 
                     configContent.append("library = ").append(finalPath).append("\n");
-                    configContent.append("slot = 0\n");
+                    // slotListIndex = 0 sélectionne le premier slot disponible (plus fiable que slot = 0)
+                    configContent.append("slotListIndex = 0\n");
                 }
 
-                // Création du fichier de config SunPKCS11 temporaire
+                // Fichier de configuration SunPKCS11 temporaire
                 File tempConfig = File.createTempFile("sunpkcs11_config", ".cfg");
                 Files.writeString(tempConfig.toPath(), configContent.toString());
                 
-                // Initialisation du Provider SunPKCS11 (Java 9+)
                 Provider p = Security.getProvider("SunPKCS11");
                 fournisseurPKCS11 = p.configure(tempConfig.getAbsolutePath());
                 Security.addProvider(fournisseurPKCS11);
 
-                System.out.println("✅ HSM initialisé avec succès sur : " + os);
+                System.out.println("✅ HSM initialisé sur : " + os);
             } catch (Exception e) {
-                System.err.println("❌ Échec initialisation HSM : " + e.getMessage());
-                throw new RuntimeException("Erreur PKI : " + e.getMessage());
+                System.err.println("❌ Erreur Initialisation PKCS11 : " + e.getMessage());
+                throw new RuntimeException("Erreur PKI : Initialization failed", e);
             }
         }
         return fournisseurPKCS11;
@@ -76,21 +76,18 @@ public class ServiceGestionClesHSM {
 
             X509Certificate certTemporaire = genererCertificatTemporaire(paireCles, aliasUtilisateur);
             ks.setKeyEntry(aliasUtilisateur, paireCles.getPrivate(), null, new Certificate[]{certTemporaire});
-            System.out.println("🔐 Clés générées pour : " + aliasUtilisateur);
+            System.out.println("🔐 Clés et certificat temporaire créés : " + aliasUtilisateur);
         }
     }
 
     private X509Certificate genererCertificatTemporaire(KeyPair kp, String alias) throws Exception {
         long now = System.currentTimeMillis();
-        Date start = new Date(now);
-        Date expiry = new Date(now + (365L * 24 * 60 * 60 * 1000));
-
         X500Name dnName = new X500Name("CN=TEMP_" + alias);
-        BigInteger serial = new BigInteger(Long.toString(now));
-
+        
         org.bouncycastle.cert.jcajce.JcaX509v3CertificateBuilder certBuilder =
                 new org.bouncycastle.cert.jcajce.JcaX509v3CertificateBuilder(
-                        dnName, serial, start, expiry, dnName, kp.getPublic());
+                        dnName, new BigInteger(Long.toString(now)), new Date(now), 
+                        new Date(now + 31536000000L), dnName, kp.getPublic());
 
         ContentSigner signer = new JcaContentSignerBuilder("SHA256withRSA")
                         .setProvider(initialiserFournisseur())
@@ -106,36 +103,30 @@ public class ServiceGestionClesHSM {
         PrivateKey clePrivee = (PrivateKey) ks.getKey(aliasUtilisateur, null);
         PublicKey clePublique = ks.getCertificate(aliasUtilisateur).getPublicKey();
 
-        X500Name nomDistingue = new X500Name("CN=" + utilisateur.getPrenom() + " " + utilisateur.getNom() +
+        X500Name subject = new X500Name("CN=" + utilisateur.getPrenom() + " " + utilisateur.getNom() +
                 ", E=" + utilisateur.getEmail() + ", O=TrustSign, C=TN");
 
-        JcaPKCS10CertificationRequestBuilder builder = new JcaPKCS10CertificationRequestBuilder(nomDistingue, clePublique);
+        JcaPKCS10CertificationRequestBuilder builder = new JcaPKCS10CertificationRequestBuilder(subject, clePublique);
         ContentSigner signer = new JcaContentSignerBuilder("SHA256withRSA")
                 .setProvider(initialiserFournisseur())
                 .build(clePrivee);
 
-        PKCS10CertificationRequest csr = builder.build(signer);
         return "-----BEGIN CERTIFICATE REQUEST-----\n" +
-                Base64.getMimeEncoder(64, new byte[]{'\n'}).encodeToString(csr.getEncoded()) +
+                Base64.getMimeEncoder(64, new byte[]{'\n'}).encodeToString(builder.build(signer).getEncoded()) +
                 "\n-----END CERTIFICATE REQUEST-----";
     }
 
     public void stockerCertificatFinal(String aliasUtilisateur, String certificatSignePem) throws Exception {
         KeyStore ks = getKeyStore();
-        String pemClean = certificatSignePem
-                .replace("-----BEGIN CERTIFICATE-----", "")
-                .replace("-----END CERTIFICATE-----", "")
-                .replaceAll("\\s", "");
-        byte[] certBytes = Base64.getDecoder().decode(pemClean);
-
+        String cleanPem = certificatSignePem.replace("-----BEGIN CERTIFICATE-----", "")
+                .replace("-----END CERTIFICATE-----", "").replaceAll("\\s", "");
+        
         CertificateFactory cf = CertificateFactory.getInstance("X.509");
-        X509Certificate vraiCertificat = (X509Certificate) cf.generateCertificate(new ByteArrayInputStream(certBytes));
+        X509Certificate cert = (X509Certificate) cf.generateCertificate(new ByteArrayInputStream(Base64.getDecoder().decode(cleanPem)));
 
-        PrivateKey privateKey = (PrivateKey) ks.getKey(aliasUtilisateur, null);
-        if (privateKey == null) throw new RuntimeException("Clé privée introuvable");
-
-        ks.setKeyEntry(aliasUtilisateur, privateKey, null, new Certificate[]{vraiCertificat});
-        System.out.println("✅ Certificat final stocké pour " + aliasUtilisateur);
+        PrivateKey pk = (PrivateKey) ks.getKey(aliasUtilisateur, null);
+        ks.setKeyEntry(aliasUtilisateur, pk, null, new Certificate[]{cert});
+        System.out.println("✅ Certificat final lié à l'alias " + aliasUtilisateur);
     }
 
     public PrivateKey recupererClePrivee(String alias) throws Exception {
@@ -143,9 +134,8 @@ public class ServiceGestionClesHSM {
     }
 
     public X509Certificate recupererCertificat(String alias) throws Exception {
-        KeyStore ks = getKeyStore();
-        Certificate cert = ks.getCertificate(alias);
-        return (cert != null) ? (X509Certificate) cert : null;
+        Certificate cert = getKeyStore().getCertificate(alias);
+        return (cert instanceof X509Certificate) ? (X509Certificate) cert : null;
     }
 
     private KeyStore getKeyStore() throws Exception {
