@@ -23,42 +23,43 @@ public class FiltreJwt extends OncePerRequestFilter {
     private ServiceJwt jwtUtils;
 
     @Override
-    protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain filterChain)
-            throws ServletException, IOException {
+     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain filterChain)
+        throws ServletException, IOException {
 
-        // 1. Récupérer le token depuis le cookie
-        String token = recupererJwtDepuisCookie(request);
+    // 1. Chercher d'abord dans le Header Authorization (Bearer)
+    String token = null;
+    String authHeader = request.getHeader("Authorization");
 
-        // 2. Si le token existe et est valide
-        if (token != null && jwtUtils.validateToken(token)) {
-            try {
-                String email = jwtUtils.getEmailFromToken(token);
-                String role = jwtUtils.getRoleFromToken(token);
-
-                if (email != null && SecurityContextHolder.getContext().getAuthentication() == null) {
-                    // Création de l'autorité (Rôle)
-                    SimpleGrantedAuthority authority = new SimpleGrantedAuthority(role);
-
-                    // Création de l'objet d'authentification pour Spring Security
-                    UsernamePasswordAuthenticationToken authentication = new UsernamePasswordAuthenticationToken(
-                            email, null, Collections.singletonList(authority)
-                    );
-
-                    authentication.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
-
-                    // Injection dans le contexte de sécurité
-                    SecurityContextHolder.getContext().setAuthentication(authentication);
-
-                    System.out.println("🔑 [AUTH SUCCESS] User: " + email + " | Role: " + role);
-                }
-            } catch (Exception e) {
-                System.err.println("❌ [AUTH ERROR] Erreur lors du traitement du token : " + e.getMessage());
-            }
-        }
-
-        // Continuer la chaîne de filtres
-        filterChain.doFilter(request, response);
+    if (authHeader != null && authHeader.startsWith("Bearer ")) {
+        token = authHeader.substring(7);
+    } 
+    
+    // 2. Si pas trouvé dans le header, chercher dans le cookie
+    if (token == null) {
+        token = recupererJwtDepuisCookie(request);
     }
+
+    // 3. Validation et Authentification
+    if (token != null && jwtUtils.validateToken(token)) {
+        try {
+            String email = jwtUtils.getEmailFromToken(token);
+            String role = jwtUtils.getRoleFromToken(token);
+
+            if (email != null && SecurityContextHolder.getContext().getAuthentication() == null) {
+                SimpleGrantedAuthority authority = new SimpleGrantedAuthority(role);
+                UsernamePasswordAuthenticationToken authentication = new UsernamePasswordAuthenticationToken(
+                        email, null, Collections.singletonList(authority)
+                );
+                authentication.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
+                SecurityContextHolder.getContext().setAuthentication(authentication);
+            }
+        } catch (Exception e) {
+            System.err.println("❌ Erreur AUTH : " + e.getMessage());
+        }
+    }
+
+    filterChain.doFilter(request, response);
+}
 
     /**
      * Méthode utilitaire pour extraire le JWT du cookie "accessToken"

@@ -23,7 +23,9 @@ const AutoSignatureDocument = ({ setSnackbar }) => {
     useEffect(() => {
         const checkUserSignature = async () => {
             try {
-                const response = await axios.get(`${API_BASE_URL}/utilisateur/mon-profil`, { withCredentials: true });
+                const token = localStorage.getItem('token');
+                const response = await axios.get(`${API_BASE_URL}/utilisateur/mon-profil`, { headers: { 'Authorization': `Bearer ${token}` },withCredentials: true });
+                
                 const userData = response.data;
                 if (userData.imageSignature && userData.imageSignature !== '') {
                     setHasSignature(true);
