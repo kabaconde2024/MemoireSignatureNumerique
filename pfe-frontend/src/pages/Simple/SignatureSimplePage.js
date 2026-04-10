@@ -150,24 +150,23 @@ const SignatureSimplePage = () => {
         setShowPositionSelector(false);
     };
 
-    const handleSendOtp = async () => {
-        if (!invitation?.telephone) {
-            alert("Numéro de téléphone non trouvé");
-            return;
-        }
-        
-        try {
-            setLoading(true);
-            await axios.post(`https://memoiresignaturenumerique.onrender.com/api/signature/send-otp?token=${token}`);
-            setIsOtpSent(true);
-            alert("✅ Code de sécurité envoyé avec succès !");
-        } catch (err) {
-            console.error("Erreur OTP:", err);
-            alert("❌ Erreur lors de l'envoi du code OTP. Veuillez réessayer.");
-        } finally {
-            setLoading(false);
-        }
-    };
+const handleSendOtp = async () => {
+    if (!invitation?.emailDestinataire) { // Vérifie l'email au lieu du téléphone
+        alert("Adresse email non trouvée");
+        return;
+    }
+    
+    try {
+        setLoading(true);
+        await axios.post(`https://memoiresignaturenumerique.onrender.com/api/signature/send-otp?token=${token}`);
+        setIsOtpSent(true);
+        alert(`✅ Code de sécurité envoyé à : ${invitation.emailDestinataire}`);
+    } catch (err) {
+        alert("❌ Erreur lors de l'envoi de l'email.");
+    } finally {
+        setLoading(false);
+    }
+};
 
     const downloadFile = (blob, fileName) => {
         const url = window.URL.createObjectURL(blob);
@@ -482,13 +481,12 @@ const SignatureSimplePage = () => {
                             <div style={{ marginTop: '25px' }}>
                                 {!isOtpSent ? (
                                     <button onClick={handleSendOtp} style={primaryBtnStyle} disabled={loading}>
-                                        {loading ? "Envoi en cours..." : "📱 Recevoir le code OTP (SMS)"}
+                                        {loading ? "Envoi en cours..." : "📱 Recevoir le code par Email"}
                                     </button>
                                 ) : (
                                     <>
                                         <p style={{ fontSize: '12px', textAlign: 'center', color: '#666' }}>
-                                            Entrez le code reçu au {invitation.telephone}
-                                        </p>
+Entrez le code reçu à l'adresse {invitation.emailDestinataire}                                        </p>
                                         <input 
                                             type="text" 
                                             placeholder="123456" 
