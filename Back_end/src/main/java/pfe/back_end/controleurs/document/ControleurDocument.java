@@ -133,41 +133,36 @@ public class ControleurDocument {
     /**
      * ✅ Téléchargement SÉCURISÉ (Vérifie si l'utilisateur est concerné par le doc)
      */
-    @GetMapping("/download/{id}")
-    @Transactional(readOnly = true)
-    public ResponseEntity<Resource> telechargerDocument(@PathVariable Long id, Authentication auth) {
-        try {
-            Document doc = documentRepository.findById(id)
-                    .orElseThrow(() -> new RuntimeException("Document introuvable"));
+@GetMapping("/download/{id}")
+@Transactional(readOnly = true)
+public ResponseEntity<byte[]> telechargerDocument(@PathVariable Long id, Authentication auth) {
+    try {
+        Document doc = documentRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Document introuvable"));
 
-            String emailConnecte = auth.getName();
+        String emailConnecte = auth.getName();
+        boolean estProprietaire = doc.getProprietaire() != null && doc.getProprietaire().getEmail().equalsIgnoreCase(emailConnecte);
+        boolean estSignataire = doc.getSignataire() != null && doc.getSignataire().getEmail().equalsIgnoreCase(emailConnecte);
 
-            // Logique de sécurité : Seul le proprio ou le signataire peut télécharger
-            boolean estProprietaire = doc.getProprietaire() != null &&
-                    doc.getProprietaire().getEmail().equalsIgnoreCase(emailConnecte);
-            boolean estSignataire = doc.getSignataire() != null &&
-                    doc.getSignataire().getEmail().equalsIgnoreCase(emailConnecte);
-
-            if (!estProprietaire && !estSignataire) {
-                return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
-            }
-
-            Path chemin = Paths.get(doc.getCheminStockage());
-            Resource ressource = new UrlResource(chemin.toUri());
-
-            if (!ressource.exists() || !ressource.isReadable()) {
-                return ResponseEntity.status(HttpStatus.NOT_FOUND).build();
-            }
-
-            return ResponseEntity.ok()
-                    .contentType(MediaType.APPLICATION_PDF)
-                    .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + doc.getNomFichier() + "\"")
-                    .body(ressource);
-
-        } catch (Exception e) {
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+        if (!estProprietaire && !estSignataire) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
         }
+
+        // ✅ RÉCUPÉRATION DEPUIS LA BDD (plus de Path ou de Resource)
+        byte[] contenu = doc.getContenu();
+        if (contenu == null) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).build();
+        }
+
+        return ResponseEntity.ok()
+                .contentType(MediaType.APPLICATION_PDF)
+                .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + doc.getNomFichier() + "\"")
+                .body(contenu);
+
+    } catch (Exception e) {
+        return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
     }
+}
 
     /**
      * ✅ Suppression sécurisée
@@ -190,6 +185,7 @@ public class ControleurDocument {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(e.getMessage());
         }
     }
+
 
     @GetMapping("/mes-documents-signes")
     @Transactional(readOnly = true)
@@ -279,28 +275,27 @@ public class ControleurDocument {
         }
     }
 
-    @GetMapping("/download-signe/{documentId}")
-    public ResponseEntity<?> telechargerDocumentSigne(@PathVariable Long documentId, Authentication auth) {
-        try {
-            Document doc = documentRepository.findById(documentId)
-                    .orElseThrow(() -> new RuntimeException("Document ID " + documentId + " non trouvé en BDD"));
 
-            Path chemin = Paths.get(doc.getCheminStockage());
-            Resource ressource = new UrlResource(chemin.toUri());
+@GetMapping("/download-signe/{documentId}")
+public ResponseEntity<?> telechargerDocumentSigne(@PathVariable Long documentId, Authentication auth) {
+    try {
+        Document doc = documentRepository.findById(documentId)
+                .orElseThrow(() -> new RuntimeException("Document ID " + documentId + " non trouvé en BDD"));
 
-            if (!ressource.exists()) {
-                System.err.println("Fichier physiquement absent : " + doc.getCheminStockage());
-                return ResponseEntity.status(HttpStatus.NOT_FOUND).body("Fichier introuvable sur le disque");
-            }
-
-            return ResponseEntity.ok()
-                    .contentType(MediaType.APPLICATION_PDF)
-                    .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + doc.getNomFichier() + "\"")
-                    .body(ressource);
-
-        } catch (Exception e) {
-            e.printStackTrace(); // Pour voir l'erreur exacte dans la console IntelliJ
-            return ResponseEntity.status(500).body("Erreur interne : " + e.getMessage());
+        // ✅ RÉCUPÉRATION DEPUIS LA BDD
+        byte[] contenu = doc.getContenu();
+        if (contenu == null) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body("Fichier binaire absent en BDD");
         }
+
+        return ResponseEntity.ok()
+                .contentType(MediaType.APPLICATION_PDF)
+                .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + doc.getNomFichier() + "\"")
+                .body(contenu);
+
+    } catch (Exception e) {
+        return ResponseEntity.status(500).body("Erreur interne : " + e.getMessage());
     }
+}
+
 }
