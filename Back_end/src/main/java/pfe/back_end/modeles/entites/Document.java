@@ -28,6 +28,11 @@ public class Document {
     @Column(nullable = false)
     private String hashSha256;
 
+
+    @Lob
+    @Column(name = "contenu", columnDefinition = "BYTEA") // BYTEA est spécifique à PostgreSQL pour les fichiers binaires
+    private byte[] contenu;
+
     @Column(name = "signature_numerique", columnDefinition = "TEXT")
     private String signatureNumerique;
 

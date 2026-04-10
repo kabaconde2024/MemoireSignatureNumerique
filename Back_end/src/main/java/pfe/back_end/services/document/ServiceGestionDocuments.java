@@ -55,6 +55,11 @@ public class ServiceGestionDocuments {
         doc.setStatut(StatutDocument.EN_ATTENTE);
         doc.setDateCreation(LocalDateTime.now());
         doc.setEstSigne(false);
+        // ✅ ON STOCKA DANS LA BDD
+    doc.setContenu(fichier.getBytes()); 
+    
+    // Optionnel : on met un chemin fictif ou null
+    doc.setCheminStockage("db://" + fichier.getOriginalFilename());
 
         return doc; // Le contrôleur fera le repository.save()
     }
@@ -128,73 +133,68 @@ public class ServiceGestionDocuments {
     }
 
     // Dans ServiceGestionDocuments.java
-    public byte[] getContenu(Long id) throws Exception {
-        Document doc = documentRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Document introuvable en BDD avec l'ID : " + id));
+    public byte[] getContenu(Long id) {
+    Document doc = documentRepository.findById(id)
+            .orElseThrow(() -> new RuntimeException("Document introuvable"));
 
-        java.io.File file = new java.io.File(doc.getCheminStockage());
-        if (!file.exists()) {
-            throw new RuntimeException("Fichier physique introuvable sur le disque : " + doc.getCheminStockage());
-        }
-
-        return java.nio.file.Files.readAllBytes(file.toPath());
+    if (doc.getContenu() == null) {
+        throw new RuntimeException("Le contenu binaire du document est vide en base de données.");
     }
 
-    @Transactional
-    public Document finaliserSignatureGenerique(Long idDocument, byte[] contenuSigne, Utilisateur signataire, String token) {
+    return doc.getContenu();
+}@Transactional
+public Document finaliserSignatureGenerique(Long idDocument, byte[] contenuSigne, Utilisateur signataire, String token) {
 
-        // 1. Récupérer le document
-        Document doc = documentRepository.findById(idDocument)
-                .orElseThrow(() -> new RuntimeException("Document original introuvable"));
+    // 1. Récupérer le document original en BDD
+    Document doc = documentRepository.findById(idDocument)
+            .orElseThrow(() -> new RuntimeException("Document original introuvable avec l'ID : " + idDocument));
 
-        // 2. Mise à jour du fichier physique (remplacement de l'original par le signé)
-        try {
-            if (doc.getCheminStockage() != null) {
-                Files.deleteIfExists(Paths.get(doc.getCheminStockage()));
-            }
-        } catch (IOException e) {
-            System.err.println("Erreur suppression ancien fichier : " + e.getMessage());
-        }
+    // 2. Mise à jour du contenu binaire (Plus besoin de Files.delete ou sauvegarderSurDisque)
+    // On remplace directement les anciens octets par les nouveaux (signés)
+    doc.setContenu(contenuSigne);
 
-        String nomSigne = "SIGNE_" + doc.getNomFichier().replace("SIGNE_", "");
-        String nouveauChemin = sauvegarderSurDisque(contenuSigne, nomSigne);
+    // 3. Mise à jour des métadonnées
+    String nomSigne = "SIGNE_" + doc.getNomFichier().replace("SIGNE_", "");
+    doc.setNomFichier(nomSigne);
+    
+    // On met à jour le chemin de stockage par une valeur indicative (puisque c'est en BDD)
+    doc.setCheminStockage("db://" + nomSigne);
+    
+    doc.setEstSigne(true);
+    doc.setStatut(StatutDocument.SIGNE);
+    doc.setDateHorodatage(LocalDateTime.now());
+    doc.setTaille((long) contenuSigne.length);
 
-        // 3. Mise à jour des métadonnées du Document
-        doc.setCheminStockage(nouveauChemin);
-        doc.setNomFichier(nomSigne);
-        doc.setEstSigne(true);
-        doc.setStatut(StatutDocument.SIGNE);
-        doc.setDateHorodatage(LocalDateTime.now());
-
-        if (signataire != null) {
-            doc.setSignataire(signataire);
-        }
-
-        // ✅ 4. STOCKER LA SIGNATURE NUMÉRIQUE EN BASE64
-        String signatureBase64 = java.util.Base64.getEncoder().encodeToString(contenuSigne);
-        doc.setSignatureNumerique(signatureBase64);
-
-        System.out.println("✅ Signature numérique stockée - Longueur: " + signatureBase64.length() + " caractères");
-
-        // Cas B : Signature via un lien email (Invitation)
-        if (token != null) {
-            InvitationSignature inv = invitationRepository.findByTokenSignature(token)
-                    .orElseThrow(() -> new RuntimeException("Invitation invalide ou expirée"));
-
-            inv.setStatut("SIGNE");
-            inv.setDateSignature(LocalDateTime.now());
-            invitationRepository.save(inv);
-        }
-
-        // 5. Recalcul du Hash SHA-256 (Preuve d'intégrité du document signé)
-        try {
-            byte[] hash = MessageDigest.getInstance("SHA-256").digest(contenuSigne);
-            doc.setHashSha256(HexFormat.of().formatHex(hash));
-        } catch (NoSuchAlgorithmException e) {
-            throw new RuntimeException("Erreur lors du calcul du Hash SHA-256", e);
-        }
-
-        // 6. Sauvegarde finale du document
-        return documentRepository.save(doc);
+    if (signataire != null) {
+        doc.setSignataire(signataire);
     }
+
+    // 4. Stocker la signature numérique brute ou Base64 (selon votre besoin de vérification)
+    String signatureBase64 = java.util.Base64.getEncoder().encodeToString(contenuSigne);
+    doc.setSignatureNumerique(signatureBase64);
+
+    // 5. Cas de la signature via invitation (Lien email)
+    if (token != null) {
+        InvitationSignature inv = invitationRepository.findByTokenSignature(token)
+                .orElseThrow(() -> new RuntimeException("Invitation invalide ou expirée"));
+
+        inv.setStatut("SIGNE");
+        inv.setDateSignature(LocalDateTime.now());
+        invitationRepository.save(inv);
+    }
+
+    // 6. Recalcul du Hash SHA-256 (Preuve d'intégrité du document signé stocké)
+    try {
+        byte[] hash = MessageDigest.getInstance("SHA-256").digest(contenuSigne);
+        doc.setHashSha256(HexFormat.of().formatHex(hash));
+        doc.setHashDocument(HexFormat.of().formatHex(hash)); // Mise à jour du champ spécifique si utilisé
+    } catch (NoSuchAlgorithmException e) {
+        throw new RuntimeException("Erreur lors du calcul du Hash SHA-256", e);
+    }
+
+    // 7. Sauvegarde finale en BDD (contient le BLOB/BYTEA du PDF)
+    System.out.println("✅ Document signé sauvegardé avec succès en BDD pour : " + doc.getNomFichier());
+    return documentRepository.save(doc);
+}
+
 }
