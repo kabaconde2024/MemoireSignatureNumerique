@@ -22,50 +22,49 @@ public class ServiceGestionClesHSM {
     @Value("${hsm.pin.utilisateur:1234}")
     private String pinUtilisateur;
     private Provider fournisseurPKCS11;
-    private Provider initialiserFournisseur() {
-        if (fournisseurPKCS11 == null) {
-            try {
-                String configFile = "softhsm2.cfg";
-                java.io.File config = new java.io.File(configFile);
 
-                if (!config.exists()) {
-                    configFile = "src/main/resources/softhsm2.cfg";
-                    config = new java.io.File(configFile);
-                }
 
-                if (!config.exists()) {
-                    throw new RuntimeException("Fichier config introuvable");
-                }
+   private Provider initialiserFournisseur() {
+    if (fournisseurPKCS11 == null) {
+        try {
+            String os = System.getProperty("os.name").toLowerCase();
+            String configContent;
 
-                System.out.println("📄 Chargement config: " + config.getAbsolutePath());
-
-                // ✅ Lire le contenu du fichier pour vérifier
-                System.out.println("Contenu du fichier config:");
-                java.nio.file.Files.readAllLines(config.toPath()).forEach(System.out::println);
-
-                fournisseurPKCS11 = Security.getProvider("SunPKCS11");
-                fournisseurPKCS11 = fournisseurPKCS11.configure(configFile);
-                Security.addProvider(fournisseurPKCS11);
-
-                KeyStore ks = KeyStore.getInstance("PKCS11", fournisseurPKCS11);
-                ks.load(null, pinUtilisateur.toCharArray());
-
-                // ✅ Lister les alias existants
-                System.out.println("📋 Alias existants dans le HSM:");
-                java.util.Enumeration<String> aliases = ks.aliases();
-                while (aliases.hasMoreElements()) {
-                    System.out.println("   - " + aliases.nextElement());
-                }
-
-                System.out.println("✅ HSM connecté avec succès!");
-
-            } catch (Exception e) {
-                System.err.println("❌ Erreur HSM: " + e.getMessage());
-                e.printStackTrace();
+            if (os.contains("win")) {
+                // Version locale (Windows)
+                configContent = "name = SoftHSM2\n" +
+                                "library = C:/SoftHSM2/lib/softhsm2-x64.dll\n" +
+                                "slot = 2145520111";
+            } else {
+                // Version Render (Linux)
+                configContent = "name = SoftHSM2\n" +
+                                "library = /usr/lib/x86_64-linux-gnu/softhsm/libsofthsm2.so\n" +
+                                "slot = 0";
             }
+
+            // Création d'un fichier temporaire de config pour SunPKCS11
+            java.io.File tempConfig = java.io.File.createTempFile("softhsm2_runtime", ".cfg");
+            java.nio.file.Files.writeString(tempConfig.toPath(), configContent);
+            
+            String configPath = tempConfig.getAbsolutePath();
+
+            // Initialisation du provider
+            fournisseurPKCS11 = Security.getProvider("SunPKCS11");
+            fournisseurPKCS11 = fournisseurPKCS11.configure(configPath);
+            Security.addProvider(fournisseurPKCS11);
+
+            KeyStore ks = KeyStore.getInstance("PKCS11", fournisseurPKCS11);
+            ks.load(null, pinUtilisateur.toCharArray());
+
+            System.out.println("✅ HSM connecté avec succès sur " + (os.contains("win") ? "Windows" : "Linux"));
+
+        } catch (Exception e) {
+            System.err.println("❌ Erreur HSM: " + e.getMessage());
+            e.printStackTrace();
         }
-        return fournisseurPKCS11;
     }
+    return fournisseurPKCS11;
+}
 
     public void genererIdentiteSecurisee(String aliasUtilisateur) throws Exception {
         KeyStore ks = getKeyStore();
