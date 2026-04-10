@@ -25,60 +25,42 @@ public class ServiceGestionClesHSM {
 
 
 private Provider initialiserFournisseur() {
-    if (fournisseurPKCS11 == null) {
-        try {
-            String os = System.getProperty("os.name").toLowerCase();
-            StringBuilder configContent = new StringBuilder();
-            
-            configContent.append("name = SoftHSM2\n");
+        if (fournisseurPKCS11 == null) {
+            try {
+                String os = System.getProperty("os.name").toLowerCase();
+                StringBuilder configContent = new StringBuilder();
+                configContent.append("name = SoftHSM2\n");
 
-            if (os.contains("win")) {
-                // Ta config locale
-                configContent.append("library = C:/SoftHSM2/lib/softhsm2-x64.dll\n");
-                configContent.append("slot = 2145520111\n");
-            } // ... dans ta méthode initialiserFournisseur()
-} else {
-    // Ta config Render (Linux)
-    // On teste le chemin A, si pas là, on utilise le chemin B
-    String pathA = "/usr/lib/x86_64-linux-gnu/softhsm/libsofthsm2.so";
-    String pathB = "/usr/lib/softhsm/libsofthsm2.so";
-    
-    java.io.File libFile = new java.io.File(pathA);
-    String finalPath = libFile.exists() ? pathA : pathB;
+                if (os.contains("win")) {
+                    configContent.append("library = C:/SoftHSM2/lib/softhsm2-x64.dll\n");
+                    configContent.append("slot = 2145520111\n");
+                } else {
+                    // Chemins Linux pour Render
+                    String pathA = "/usr/lib/x86_64-linux-gnu/softhsm/libsofthsm2.so";
+                    String pathB = "/usr/lib/softhsm/libsofthsm2.so";
+                    File libFile = new File(pathA);
+                    String finalPath = libFile.exists() ? pathA : pathB;
 
-    System.out.println("🔍 Bibliothèque SoftHSM2 trouvée sur : " + finalPath);
-    
-    configContent.append("library = ").append(finalPath).append("\n");
-    configContent.append("slot = 0\n");
-}
+                    configContent.append("library = ").append(finalPath).append("\n");
+                    configContent.append("slot = 0\n");
+                }
 
+                // Création du fichier de config temporaire
+                File tempConfig = File.createTempFile("softhsm2_render", ".cfg");
+                Files.writeString(tempConfig.toPath(), configContent.toString());
+                
+                // Initialisation spécifique Java 9+
+                Provider p = Security.getProvider("SunPKCS11");
+                fournisseurPKCS11 = p.configure(tempConfig.getAbsolutePath());
+                Security.addProvider(fournisseurPKCS11);
 
-            // TECHNIQUE CRUCIALE : On crée un fichier temporaire sur le disque de Render
-            // Cela garantit que Java trouve le fichier avec un chemin absolu
-            java.io.File tempConfig = java.io.File.createTempFile("softhsm2_render", ".cfg");
-            java.nio.file.Files.writeString(tempConfig.toPath(), configContent.toString());
-            
-            String absolutePath = tempConfig.getAbsolutePath();
-            System.out.println("🚀 Initialisation PKCS11 avec : " + absolutePath);
-
-            // Chargement du provider SunPKCS11
-            Provider p = Security.getProvider("SunPKCS11");
-            fournisseurPKCS11 = p.configure(absolutePath);
-            Security.addProvider(fournisseurPKCS11);
-
-            // Test de chargement immédiat
-            KeyStore ks = KeyStore.getInstance("PKCS11", fournisseurPKCS11);
-            ks.load(null, pinUtilisateur.toCharArray());
-            
-            System.out.println("✅ HSM Ready !");
-
-        } catch (Exception e) {
-            System.err.println("❌ Erreur critique PKCS11 : " + e.getMessage());
-            throw new RuntimeException("Erreur PKI : PKCS11 non trouvé ou mal configuré", e);
+                System.out.println("✅ HSM initialisé sur : " + os);
+            } catch (Exception e) {
+                throw new RuntimeException("Erreur PKI : " + e.getMessage());
+            }
         }
+        return fournisseurPKCS11;
     }
-    return fournisseurPKCS11;
-}
 
     public void genererIdentiteSecurisee(String aliasUtilisateur) throws Exception {
         KeyStore ks = getKeyStore();
