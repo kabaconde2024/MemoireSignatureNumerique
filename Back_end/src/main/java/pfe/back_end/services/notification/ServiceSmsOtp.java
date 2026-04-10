@@ -4,66 +4,59 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import pfe.back_end.services.configuration.ServiceConfiguration;
 
-import java.util.Random;
+import java.security.SecureRandom; // Plus sécurisé pour la crypto
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.Map;
 
 @Service
 public class ServiceSmsOtp {
 
+    // On utilise ConcurrentHashMap pour gérer les accès simultanés
     private final Map<String, String> otpStore = new ConcurrentHashMap<>();
+    private final SecureRandom secureRandom = new SecureRandom();
 
     @Autowired
     private ServiceConfiguration serviceConfiguration;
 
     /**
-     * Génère un code OTP avec la longueur configurée
+     * Génère un code OTP et le stocke avec une clé (Email ou Tel)
      */
-    public String generateOtp(String phoneNumber) {
-        int longueur = 6; // Valeur par défaut
-        try {
-            if (serviceConfiguration != null) {
-                String valeur = serviceConfiguration.getValeur("signature.otp.longueur");
-                if (valeur != null && !valeur.isEmpty()) {
-                    longueur = Integer.parseInt(valeur);
-                }
-            }
-        } catch (Exception e) {
-            System.err.println("Erreur lecture longueur OTP: " + e.getMessage());
+    public String generateOtp(String identifier, int longueur) {
+        // Génération sécurisée
+        StringBuilder otp = new StringBuilder();
+        for (int i = 0; i < longueur; i++) {
+            otp.append(secureRandom.nextInt(10));
         }
-
-        String format = "%0" + longueur + "d";
-        int max = (int) Math.pow(10, longueur) - 1;
-        String otp = String.format(format, new Random().nextInt(max));
-        otpStore.put(phoneNumber, otp);
-        return otp;
+        
+        String code = otp.toString();
+        otpStore.put(identifier, code); // L'identifiant est l'email ici
+        return code;
     }
 
     /**
-     * Génère un code OTP avec une longueur spécifique (surcharge)
+     * Surcharge avec longueur par défaut lue depuis la config
      */
-    public String generateOtp(String phoneNumber, int longueur) {
-        String format = "%0" + longueur + "d";
-        int max = (int) Math.pow(10, longueur) - 1;
-        String otp = String.format(format, new Random().nextInt(max));
-        otpStore.put(phoneNumber, otp);
-        return otp;
+    public String generateOtp(String identifier) {
+        int longueur = 6;
+        try {
+            String val = serviceConfiguration.getValeur("signature.otp.longueur");
+            if (val != null) longueur = Integer.parseInt(val);
+        } catch (Exception e) {
+            // Fallback à 6
+        }
+        return generateOtp(identifier, longueur);
     }
 
     /**
-     * Simulation d'envoi de SMS
+     * Vérifie le code
+     * IMPORTANT : L'identifiant doit être le même que lors de la génération (l'email)
      */
-    public void sendSms(String phoneNumber, String message) {
-        System.out.println("SMS envoyé à " + phoneNumber + " : " + message);
-    }
-
-    /**
-     * Vérifie si le code saisi est correct
-     */
-    public boolean verifyOtp(String phoneNumber, String userCode) {
-        String validCode = otpStore.get(phoneNumber);
+    public boolean verifyOtp(String identifier, String userCode) {
+        if (identifier == null || userCode == null) return false;
+        
+        String validCode = otpStore.get(identifier);
         if (validCode != null && validCode.equals(userCode)) {
-            otpStore.remove(phoneNumber);
+            otpStore.remove(identifier); // On supprime après usage (Usage unique)
             return true;
         }
         return false;

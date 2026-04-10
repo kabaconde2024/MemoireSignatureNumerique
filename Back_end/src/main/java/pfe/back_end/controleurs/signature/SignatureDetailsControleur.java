@@ -23,6 +23,7 @@ public class SignatureDetailsControleur {
                     response.put("nomDocument", inv.getDocument().getNomFichier());
                     response.put("prenomSignataire", inv.getPrenomSignataire());
                     response.put("nomSignataire", inv.getNomSignataire());
+                    response.put("emailDestinataire", inv.getEmailDestinataire());
                     response.put("telephone", inv.getTelephoneSignataire());
                     response.put("statut", inv.getStatut());
                     response.put("typeSignature", inv.getTypeSignature());

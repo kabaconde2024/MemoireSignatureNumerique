@@ -246,7 +246,8 @@ const handleSendOtp = async () => {
                 token: token,
                 otp: otp,
                 nom: signatureText,
-                telephone: invitation.telephone,
+              //  telephone: invitation.telephone,
+                email: invitation.emailDestinataire, // <--- Utilise l'email comme identifiant
                 x: selectedPosition.x,
                 y: selectedPosition.y,
                 pageNumber: selectedPosition.pageNumber,
