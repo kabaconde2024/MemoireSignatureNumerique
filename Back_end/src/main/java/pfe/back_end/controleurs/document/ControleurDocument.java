@@ -47,34 +47,40 @@ public class ControleurDocument {
      * ✅ Upload d'un document initial (Stockage BDD)
      * Correction : On ne renvoie qu'une Map légère pour éviter de sérialiser le binaire.
      */
-    @PostMapping("/upload")
-    @Transactional
-    public ResponseEntity<?> uploader(@RequestParam("file") MultipartFile file, Authentication auth) {
-        try {
-            if (auth == null) return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("Session expirée");
-
-            Utilisateur proprietaire = utilisateurRepository.findByEmailIgnoreCase(auth.getName())
-                    .orElseThrow(() -> new RuntimeException("Utilisateur non trouvé"));
-
-            // Le service s'occupe de la création et de la première sauvegarde
-            Document doc = serviceDocument.enregistrerDocument(file);
-            doc.setProprietaire(proprietaire);
-
-            // Mise à jour finale avec le propriétaire
-            documentRepository.save(doc);
-
-            return ResponseEntity.ok(Map.of(
-                    "message", "Document importé avec succès",
-                    "id", doc.getId(),
-                    "nomFichier", doc.getNomFichier()
-            ));
-        } catch (Exception e) {
-            e.printStackTrace();
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                    .body(Map.of("erreur", "Erreur lors de l'upload : " + e.getMessage()));
+   @PostMapping("/upload")
+@Transactional
+public ResponseEntity<?> uploader(@RequestParam("file") MultipartFile file, Authentication auth) {
+    try {
+        // 1. Vérification de l'authentification
+        if (auth == null || !auth.isAuthenticated()) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                    .body(Map.of("erreur", "Vous devez être connecté pour uploader un document."));
         }
-    }
 
+        // 2. Récupération de l'utilisateur
+        Utilisateur proprietaire = utilisateurRepository.findByEmailIgnoreCase(auth.getName())
+                .orElseThrow(() -> new RuntimeException("Utilisateur non trouvé dans la base"));
+
+        // 3. Traitement du fichier
+        if (file.isEmpty()) {
+            return ResponseEntity.badRequest().body(Map.of("erreur", "Le fichier est vide"));
+        }
+
+        Document doc = serviceDocument.enregistrerDocument(file);
+        doc.setProprietaire(proprietaire);
+        documentRepository.save(doc);
+
+        return ResponseEntity.ok(Map.of(
+                "message", "Document importé avec succès",
+                "id", doc.getId(),
+                "nomFichier", doc.getNomFichier()
+        ));
+    } catch (Exception e) {
+        e.printStackTrace();
+        return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                .body(Map.of("erreur", "Erreur lors de l'upload : " + e.getMessage()));
+    }
+}
     /**
      * ✅ Liste uniquement les documents auto-signés par l'utilisateur
      */
