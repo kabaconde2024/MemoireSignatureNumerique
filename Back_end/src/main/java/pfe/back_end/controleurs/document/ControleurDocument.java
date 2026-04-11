@@ -1,4 +1,5 @@
 package pfe.back_end.controleurs.document;
+import org.springframework.security.access.prepost.PreAuthorize;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpHeaders;
@@ -16,7 +17,6 @@ import pfe.back_end.repositories.sql.DocumentRepository;
 import pfe.back_end.repositories.sql.UtilisateurRepository;
 import pfe.back_end.repositories.sql.InvitationRepository;
 import pfe.back_end.services.document.ServiceGestionDocuments;
-
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -47,41 +47,36 @@ public class ControleurDocument {
      * ✅ Upload d'un document initial (Stockage BDD)
      * Correction : On ne renvoie qu'une Map légère pour éviter de sérialiser le binaire.
      */
-   @PostMapping("/upload")
-@Transactional
-public ResponseEntity<?> uploader(@RequestParam("file") MultipartFile file, Authentication auth) {
-    try {
-        // 1. Vérification de l'authentification
-        if (auth == null || !auth.isAuthenticated()) {
-            return ResponseEntity.status(HttpStatus.FORBIDDEN)
-                    .body(Map.of("erreur", "Vous devez être connecté pour uploader un document."));
-        }
-
-        // 2. Récupération de l'utilisateur
-        Utilisateur proprietaire = utilisateurRepository.findByEmailIgnoreCase(auth.getName())
-                .orElseThrow(() -> new RuntimeException("Utilisateur non trouvé dans la base"));
-
-        // 3. Traitement du fichier
-        if (file.isEmpty()) {
-            return ResponseEntity.badRequest().body(Map.of("erreur", "Le fichier est vide"));
-        }
-
-        Document doc = serviceDocument.enregistrerDocument(file);
-        doc.setProprietaire(proprietaire);
-        documentRepository.save(doc);
-
-        return ResponseEntity.ok(Map.of(
-                "message", "Document importé avec succès",
+ @PostMapping("/upload")
+    @PreAuthorize("isAuthenticated()")  // ✅ Ajoutez cette ligne
+    public ResponseEntity<?> uploadDocument(
+            @RequestParam("file") MultipartFile file,
+            Authentication authentication) {
+        try {
+            System.out.println("=== UPLOAD DOCUMENT ===");
+            System.out.println("Utilisateur: " + (authentication != null ? authentication.getName() : "null"));
+            System.out.println("Fichier: " + file.getOriginalFilename());
+            
+            if (authentication == null || !authentication.isAuthenticated()) {
+                return ResponseEntity.status(401).body(Map.of("erreur", "Utilisateur non authentifié"));
+            }
+            
+            Document doc = serviceDocument.enregistrerDocument(file);
+            
+            System.out.println("✅ Document uploadé avec ID: " + doc.getId());
+            
+            return ResponseEntity.ok(Map.of(
                 "id", doc.getId(),
-                "nomFichier", doc.getNomFichier()
-        ));
-    } catch (Exception e) {
-        e.printStackTrace();
-        return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                .body(Map.of("erreur", "Erreur lors de l'upload : " + e.getMessage()));
+                "nomFichier", doc.getNomFichier(),
+                "message", "Document uploadé avec succès"
+            ));
+        } catch (Exception e) {
+            e.printStackTrace();
+            return ResponseEntity.status(500).body(Map.of("erreur", e.getMessage()));
+        }
     }
-}
-    /**
+    
+      /**
      * ✅ Liste uniquement les documents auto-signés par l'utilisateur
      */
     @GetMapping("/liste-signes-auto")

@@ -4,6 +4,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.*;
@@ -19,14 +20,18 @@ import java.util.Map;
 
 @RestController
 @RequestMapping("/api/signature")
-@CrossOrigin(origins = "*")
+@CrossOrigin(origins = {
+    "http://localhost:3000",
+    "https://localhost:3000", 
+    "https://memoire-frontend.onrender.com"
+}, allowCredentials = "true")
 public class AutoSignatureControleur {
 
     @Autowired
     private UtilisateurRepository utilisateurRepository;
 
     @Autowired
-    private DocumentRepository documentRepository;  // ⭐ AJOUTER CETTE LIGNE
+    private DocumentRepository documentRepository;
 
     @Autowired
     private AutoSignature serviceAutoSignature;
@@ -35,10 +40,11 @@ public class AutoSignatureControleur {
     private ServiceGestionDocuments serviceDocument;
 
     @Autowired
-    private ServiceAudit serviceAudit;  // ⭐ AJOUTER AUSSI POUR L'AUDIT
+    private ServiceAudit serviceAudit;
 
     @PostMapping("/appliquer-auto-signature")
     @Transactional
+    @PreAuthorize("isAuthenticated()")  // ✅ Ajoutez cette ligne
     public ResponseEntity<?> AutoSignature(
             @RequestParam("documentId") String documentId,
             @RequestParam("x") float x,
@@ -48,10 +54,20 @@ public class AutoSignatureControleur {
             @RequestParam("displayHeight") float displayHeight,
             Authentication authentication) {
         try {
+            System.out.println("=== DÉBUT AUTO-SIGNATURE CONTROLLER ===");
+            System.out.println("Utilisateur: " + (authentication != null ? authentication.getName() : "null"));
+            System.out.println("Document ID: " + documentId);
+            
             // 1. Récupérer l'utilisateur connecté
+            if (authentication == null || !authentication.isAuthenticated()) {
+                return ResponseEntity.status(401).body(Map.of("erreur", "Utilisateur non authentifié"));
+            }
+            
             Utilisateur user = utilisateurRepository.findByEmail(authentication.getName())
                     .orElseThrow(() -> new RuntimeException("Utilisateur non trouvé"));
 
+            System.out.println("✅ Utilisateur trouvé: " + user.getEmail());
+            
             // 2. Vérifier si l'utilisateur a une signature enregistrée
             if (user.getImageSignature() == null || user.getImageSignature().isEmpty()) {
                 return ResponseEntity.badRequest().body(Map.of(
@@ -99,6 +115,8 @@ public class AutoSignatureControleur {
                     "Auto-signature appliquée"
             );
 
+            System.out.println("=== FIN AUTO-SIGNATURE CONTROLLER SUCCÈS ===");
+            
             // 9. Retourner le PDF
             return ResponseEntity.ok()
                     .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + docFinal.getNomFichier() + "\"")
