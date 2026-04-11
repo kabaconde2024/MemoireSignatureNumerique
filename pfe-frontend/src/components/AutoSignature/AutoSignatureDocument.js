@@ -1,8 +1,8 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Document, Page, pdfjs } from 'react-pdf';
-import { Box, Button, Typography, Paper, CircularProgress, Stack, IconButton, Tooltip, Zoom, Alert } from '@mui/material';
+import { Box, Button, Typography, Paper, CircularProgress, Stack, Zoom, Alert } from '@mui/material';
 import { CloudUpload, Download, HistoryEdu, CheckCircleOutline, PictureAsPdf, Warning } from '@mui/icons-material';
-import axios from 'axios';
+import API from '../services/api';
 
 // Configuration du worker
 pdfjs.GlobalWorkerOptions.workerSrc = `//unpkg.com/pdfjs-dist@${pdfjs.version}/build/pdf.worker.min.mjs`;
@@ -17,55 +17,76 @@ const AutoSignatureDocument = ({ setSnackbar }) => {
     const [checkingSignature, setCheckingSignature] = useState(true);
     const contentRef = useRef(null);
 
-    const API_BASE_URL = 'https://memoiresignaturenumerique.onrender.com/api';
-
-    // Fonction utilitaire pour récupérer le token du cookie
-    const getAccessToken = () => {
-        const cookies = document.cookie.split(';');
-        for (let cookie of cookies) {
-            const [name, value] = cookie.trim().split('=');
-            if (name === 'accessToken') {
-                return value;
-            }
-        }
-        return null;
-    };
-
-    // Configuration d'axios avec le token
-    const createAxiosConfig = () => {
-        const token = getAccessToken();
-        return {
-            withCredentials: true,
-            headers: token ? {
-                'Authorization': `Bearer ${token}`
-            } : {}
-        };
-    };
-
-    // ✅ Vérifier si l'utilisateur a une signature enregistrée
-    useEffect(() => {
-        const checkUserSignature = async () => {
-            try {
-                const config = createAxiosConfig();
-                const response = await axios.get(`${API_BASE_URL}/utilisateur/mon-profil`, config);
-                const userData = response.data;
-                if (userData.imageSignature && userData.imageSignature !== '') {
-                    setHasSignature(true);
-                } else {
-                    setHasSignature(false);
-                }
-            } catch (error) {
-                console.error("Erreur vérification signature:", error);
+    // ✅ Fonction de vérification de signature (définie AVANT useEffect)
+    const checkUserSignature = async () => {
+        try {
+            console.log("🔍 Vérification de la signature utilisateur...");
+            const response = await API.get('/utilisateur/mon-profil');
+            const userData = response.data;
+            console.log("📋 Données utilisateur reçues:", { 
+                email: userData.email, 
+                hasSignature: !!(userData.imageSignature && userData.imageSignature !== '')
+            });
+            
+            if (userData.imageSignature && userData.imageSignature !== '') {
+                setHasSignature(true);
+                console.log("✅ Signature trouvée");
+            } else {
                 setHasSignature(false);
-            } finally {
-                setCheckingSignature(false);
+                console.log("❌ Aucune signature trouvée");
             }
-        };
-        checkUserSignature();
-    }, []);
+        } catch (error) {
+            console.error("❌ Erreur vérification signature:", error);
+            if (error.response?.status === 401) {
+                console.log("⚠️ Session expirée");
+                setSnackbar({ 
+                    open: true, 
+                    message: "Session expirée. Veuillez vous reconnecter.", 
+                    severity: 'warning' 
+                });
+            }
+            setHasSignature(false);
+        } finally {
+            setCheckingSignature(false);
+        }
+    };
+
+    // ✅ Debug des cookies (optionnel)
+    const debugCookies = () => {
+        console.log("=== INSPECTION DES COOKIES ===");
+        console.log("document.cookie brut:", document.cookie);
+        
+        if (document.cookie) {
+            const cookies = document.cookie.split(';');
+            console.log(`Nombre de cookies: ${cookies.length}`);
+            cookies.forEach((cookie, index) => {
+                const [name, value] = cookie.trim().split('=');
+                console.log(`Cookie ${index + 1}: Nom: ${name}, Longueur: ${value?.length || 0}`);
+            });
+        } else {
+            console.log("❌ Aucun cookie accessible via document.cookie (normal car httpOnly)");
+        }
+        
+        // Vérifier l'authentification
+        console.log("\nTest appel /auth/check:");
+        API.get('/auth/check')
+            .then(response => {
+                console.log("✅ /auth/check réponse:", response.data);
+            })
+            .catch(error => {
+                console.error("❌ /auth/check erreur:", error.response?.status, error.response?.data);
+            });
+    };
+
+    // useEffect pour la vérification initiale
+    useEffect(() => {
+        debugCookies();
+        checkUserSignature(); // ✅ Maintenant la fonction est définie
+    }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
     const onDocumentLoadSuccess = ({ numPages }) => {
         setNumPages(numPages);
+        console.log(`📄 Document chargé: ${numPages} pages`);
     };
 
     const handleCaptureCoords = (e) => {
@@ -88,169 +109,115 @@ const AutoSignatureDocument = ({ setSnackbar }) => {
             }
         }
 
-        setCoords({
+        const newCoords = {
             x: e.clientX - rect.left,
             y: localY,
             page: currentPage,
             displayPageHeight: pHeight
-        });
+        };
+        
+        setCoords(newCoords);
+        console.log("📍 Position de signature enregistrée:", newCoords);
     };
 
-    // Fonction de debug pour inspecter tous les cookies
-const debugCookies = () => {
-    console.log("=== INSPECTION DES COOKIES ===");
-    console.log("document.cookie brut:", document.cookie);
-    
-    if (document.cookie) {
-        const cookies = document.cookie.split(';');
-        console.log(`Nombre de cookies: ${cookies.length}`);
-        cookies.forEach((cookie, index) => {
-            const [name, value] = cookie.trim().split('=');
-            console.log(`Cookie ${index + 1}:`);
-            console.log(`  Nom: ${name}`);
-            console.log(`  Valeur: ${value ? value.substring(0, 30) + '...' : 'vide'}`);
-            console.log(`  Longueur: ${value?.length || 0}`);
-        });
-    } else {
-        console.log("❌ Aucun cookie accessible via document.cookie");
-        console.log("   (Normal si les cookies sont HttpOnly)");
-    }
-    
-    // Vérifier si on peut accéder à l'API auth/check
-    console.log("\nTest appel /auth/check:");
-    axios.get(`${API_BASE_URL}/auth/check`, { withCredentials: true })
-        .then(response => {
-            console.log("✅ /auth/check réponse:", response.data);
-        })
-        .catch(error => {
-            console.error("❌ /auth/check erreur:", error.response?.status, error.response?.data);
-        });
-};
-
-// Appeler cette fonction au chargement du composant
-useEffect(() => {
-    debugCookies();
-    checkUserSignature();
-}, []);
-const handleAutoSign = async () => {
-    if (!file) return;
-    
-    // ✅ LOG POUR DEBUG
-    console.log("=== DÉBUT AUTO-SIGNATURE ===");
-    console.log("1. Vérification du fichier:", file.name, file.size, "bytes");
-    
-    // Vérifier la signature
-    if (!hasSignature) {
-        console.log("2. Aucune signature trouvée en base");
-        setSnackbar({ 
-            open: true, 
-            message: "❌ Vous n'avez pas de signature enregistrée. Veuillez d'abord créer votre signature manuscrite dans votre profil.", 
-            severity: 'error' 
-        });
-        return;
-    }
-    console.log("2. Signature trouvée en base");
-    
-    // Récupération du token
-    const token = getAccessToken();
-    console.log("3. Token récupéré:", token ? `${token.substring(0, 50)}...` : "❌ NON");
-    console.log("4. Tous les cookies (document.cookie):", document.cookie || "Aucun cookie accessible");
-    console.log("5. Longueur de document.cookie:", document.cookie?.length || 0);
-    
-    // Vérifier si des cookies existent
-    if (document.cookie) {
-        const cookiesList = document.cookie.split(';');
-        console.log("6. Liste des cookies accessibles:", cookiesList.map(c => c.trim().split('=')[0]));
-    }
-    
-    if (!token) {
-        console.error("7. ❌ TOKEN NON TROUVÉ - Impossible de continuer");
-        setSnackbar({ 
-            open: true, 
-            message: "❌ Session expirée. Veuillez vous reconnecter.", 
-            severity: 'error' 
-        });
-        return;
-    }
-    console.log("7. ✅ Token trouvé avec succès");
-    
-    setLoading(true);
-    
-    try {
-        console.log("8. Configuration axios avec token");
-        const config = createAxiosConfig();
-        console.log("8a. Headers configurés:", Object.keys(config.headers || {}));
-        console.log("8b. withCredentials:", config.withCredentials);
-        
-        const formData = new FormData();
-        formData.append('file', file);
-        console.log("9. FormData créé avec le fichier");
-        
-        console.log("10. Envoi de la requête upload vers:", `${API_BASE_URL}/documents/upload`);
-        const uploadRes = await axios.post(`${API_BASE_URL}/documents/upload`, formData, config);
-        
-        console.log("11. ✅ Upload réussi! Document ID:", uploadRes.data.id);
-        console.log("11a. Réponse complète:", uploadRes.data);
-        
-        console.log("12. Envoi de la requête signature avec les paramètres:", {
-            documentId: uploadRes.data.id,
-            x: coords.x,
-            y: coords.y,
-            pageNumber: coords.page,
-            displayWidth: 800,
-            displayHeight: coords.displayPageHeight
-        });
-        
-        const response = await axios.post(`${API_BASE_URL}/signature/appliquer-auto-signature`, null, {
-            params: {
-                documentId: uploadRes.data.id,
-                x: coords.x,
-                y: coords.y,
-                pageNumber: coords.page,
-                displayWidth: 800, 
-                displayHeight: coords.displayPageHeight
-            },
-            responseType: 'blob',
-            ...config
-        });
-        
-        console.log("13. ✅ Signature appliquée! Taille du PDF signé:", response.data.size, "bytes");
-        
-        const url = URL.createObjectURL(new Blob([response.data], { type: 'application/pdf' }));
-        setSignedFileUrl(url);
-        console.log("14. URL du PDF signé créée");
-        
-        setSnackbar({ open: true, message: "✅ Document signé avec succès !", severity: 'success' });
-        
-    } catch (err) {
-        console.error("=== ERREUR DÉTAILLÉE ===");
-        console.error("15. ❌ Erreur lors du processus:");
-        console.error("15a. Message:", err.message);
-        console.error("15b. Code d'erreur:", err.code);
-        console.error("15c. Status:", err.response?.status);
-        console.error("15d. Status text:", err.response?.statusText);
-        console.error("15e. Headers de réponse:", err.response?.headers);
-        console.error("15f. Données de l'erreur:", err.response?.data);
-        
-        if (err.response?.status === 403) {
-            console.error("16. 🔒 ERREUR 403 - Forbidden");
-            console.error("16a. URL:", err.config?.url);
-            console.error("16b. Méthode:", err.config?.method);
-            console.error("16c. Headers envoyés:", err.config?.headers);
-            console.error("16d. Token envoyé dans headers?", err.config?.headers?.Authorization ? "OUI" : "NON");
-            console.error("16e. WithCredentials activé?", err.config?.withCredentials);
+    const handleAutoSign = async () => {
+        if (!file) {
+            console.log("❌ Aucun fichier sélectionné");
+            return;
         }
         
-        const errorMsg = err.response?.data?.erreur || err.response?.data?.message || err.message || "Erreur lors de la signature";
-        console.error("17. Message d'erreur final:", errorMsg);
+        console.log("=== DÉBUT AUTO-SIGNATURE ===");
+        console.log("📄 Fichier:", file.name, `${(file.size / 1024).toFixed(2)} KB`);
         
-        setSnackbar({ open: true, message: errorMsg, severity: 'error' });
-    } finally { 
-        setLoading(false);
-        console.log("18. Fin du processus - loading désactivé");
-        console.log("=== FIN AUTO-SIGNATURE ===\n");
-    }
-};
+        if (!hasSignature) {
+            console.log("❌ Aucune signature trouvée en base");
+            setSnackbar({ 
+                open: true, 
+                message: "❌ Vous n'avez pas de signature enregistrée. Veuillez d'abord créer votre signature manuscrite dans votre profil.", 
+                severity: 'error' 
+            });
+            return;
+        }
+        
+        setLoading(true);
+        
+        try {
+            // 1. Upload du document
+            console.log("📤 Upload du document...");
+            const formData = new FormData();
+            formData.append('file', file);
+            
+            const uploadRes = await API.post('/documents/upload', formData, {
+                headers: {
+                    'Content-Type': 'multipart/form-data'
+                }
+            });
+            
+            console.log("✅ Upload réussi! Document ID:", uploadRes.data.id);
+            
+            // 2. Application de la signature
+            console.log("✍️ Application de la signature...");
+            
+            const response = await API.post('/signature/appliquer-auto-signature', null, {
+                params: {
+                    documentId: uploadRes.data.id,
+                    x: coords.x,
+                    y: coords.y,
+                    pageNumber: coords.page,
+                    displayWidth: 800, 
+                    displayHeight: coords.displayPageHeight
+                },
+                responseType: 'blob'
+            });
+            
+            console.log("✅ Signature appliquée! Taille du PDF:", `${(response.data.size / 1024).toFixed(2)} KB`);
+            
+            // 3. Création de l'URL de téléchargement
+            const url = URL.createObjectURL(new Blob([response.data], { type: 'application/pdf' }));
+            setSignedFileUrl(url);
+            
+            setSnackbar({ 
+                open: true, 
+                message: "✅ Document signé avec succès !", 
+                severity: 'success' 
+            });
+            
+        } catch (err) {
+            console.error("=== ERREUR DÉTAILLÉE ===");
+            console.error("Status:", err.response?.status);
+            console.error("Message:", err.response?.data?.erreur || err.message);
+            
+            let errorMsg = "Erreur lors de la signature";
+            
+            if (err.response?.status === 401) {
+                errorMsg = "Session expirée. Veuillez vous reconnecter.";
+            } else if (err.response?.status === 403) {
+                errorMsg = "Accès non autorisé. Vérifiez vos droits.";
+            } else if (err.response?.data?.erreur) {
+                errorMsg = err.response.data.erreur;
+            } else if (err.message) {
+                errorMsg = err.message;
+            }
+            
+            setSnackbar({ 
+                open: true, 
+                message: `❌ ${errorMsg}`, 
+                severity: 'error' 
+            });
+        } finally { 
+            setLoading(false);
+            console.log("=== FIN AUTO-SIGNATURE ===\n");
+        }
+    };
+
+    // Nettoyage de l'URL blob
+    useEffect(() => {
+        return () => {
+            if (signedFileUrl) {
+                URL.revokeObjectURL(signedFileUrl);
+            }
+        };
+    }, [signedFileUrl]);
 
     // Affichage du message si pas de signature
     if (!checkingSignature && !hasSignature) {
@@ -276,6 +243,7 @@ const handleAutoSign = async () => {
         );
     }
 
+    // Suite du rendu...
     return (
         <Box sx={{ maxWidth: '1000px', mx: 'auto', p: 3 }}>
             <Paper elevation={0} sx={{ p: 4, borderRadius: '24px', textAlign: 'center', border: '1px solid #e0e0e0', bgcolor: '#fafafa' }}>
@@ -285,11 +253,11 @@ const handleAutoSign = async () => {
                         Auto-Signature
                     </Typography>
                     <Typography variant="body1" color="textSecondary">
-                        Placez votre signature enregistrée n'importe où sur le document
+                        Cliquez sur le PDF pour positionner votre signature
                     </Typography>
                     {hasSignature && (
                         <Alert severity="success" sx={{ mt: 2, borderRadius: '12px' }}>
-                            ✅ Signature manuscrite trouvée - Vous pouvez signer automatiquement
+                            ✅ Signature manuscrite trouvée - Cliquez sur le document pour placer votre signature
                         </Alert>
                     )}
                 </Box>
@@ -318,7 +286,19 @@ const handleAutoSign = async () => {
                         <Typography variant="caption" color="textSecondary">
                             Format PDF uniquement (max 10MB)
                         </Typography>
-                        <input type="file" hidden accept="application/pdf" onChange={(e) => setFile(e.target.files[0])} />
+                        <input 
+                            type="file" 
+                            hidden 
+                            accept="application/pdf" 
+                            onChange={(e) => {
+                                const selectedFile = e.target.files[0];
+                                if (selectedFile) {
+                                    console.log("📁 Fichier sélectionné:", selectedFile.name);
+                                    setFile(selectedFile);
+                                    setSignedFileUrl(null);
+                                }
+                            }} 
+                        />
                     </Box>
                 )}
 
@@ -330,7 +310,15 @@ const handleAutoSign = async () => {
                                 <Typography variant="subtitle2" sx={{ fontWeight: 600 }}>{file.name}</Typography>
                             </Stack>
                             {!signedFileUrl && (
-                                <Button size="small" onClick={() => {setFile(null); setSignedFileUrl(null);}} color="error">
+                                <Button 
+                                    size="small" 
+                                    onClick={() => {
+                                        setFile(null);
+                                        setSignedFileUrl(null);
+                                        setNumPages(null);
+                                    }} 
+                                    color="error"
+                                >
                                     Changer de fichier
                                 </Button>
                             )}
@@ -344,8 +332,28 @@ const handleAutoSign = async () => {
                             borderRadius: '12px',
                             boxShadow: 'inset 0px 2px 10px rgba(0,0,0,0.1)'
                         }}>
-                            <Box ref={contentRef} onClick={handleCaptureCoords} sx={{ position: 'relative', cursor: 'crosshair', display: 'inline-block', py: 2 }}>
-                                <Document file={signedFileUrl || file} onLoadSuccess={onDocumentLoadSuccess}>
+                            <Box 
+                                ref={contentRef} 
+                                onClick={!signedFileUrl ? handleCaptureCoords : undefined} 
+                                sx={{ 
+                                    position: 'relative', 
+                                    cursor: !signedFileUrl ? 'crosshair' : 'default', 
+                                    display: 'inline-block', 
+                                    py: 2 
+                                }}
+                            >
+                                <Document 
+                                    file={signedFileUrl || file} 
+                                    onLoadSuccess={onDocumentLoadSuccess}
+                                    onLoadError={(error) => {
+                                        console.error("❌ Erreur chargement PDF:", error);
+                                        setSnackbar({ 
+                                            open: true, 
+                                            message: "Erreur lors du chargement du PDF", 
+                                            severity: 'error' 
+                                        });
+                                    }}
+                                >
                                     {Array.from(new Array(numPages), (el, index) => (
                                         <Page 
                                             key={`p_${index + 1}`} 
@@ -359,7 +367,7 @@ const handleAutoSign = async () => {
                                     ))}
                                 </Document>
 
-                                {!signedFileUrl && (
+                                {!signedFileUrl && coords.page && (
                                     <Box sx={{
                                         position: 'absolute', 
                                         left: coords.x - 70, 
