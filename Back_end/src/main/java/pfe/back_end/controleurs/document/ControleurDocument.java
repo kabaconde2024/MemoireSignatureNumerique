@@ -45,24 +45,31 @@ public class ControleurDocument {
 
     /**
      * ✅ Upload d'un document initial (Stockage BDD)
+     * Correction : On ne renvoie qu'une Map légère pour éviter de sérialiser le binaire.
      */
     @PostMapping("/upload")
     @Transactional
     public ResponseEntity<?> uploader(@RequestParam("file") MultipartFile file, Authentication auth) {
         try {
+            if (auth == null) return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("Session expirée");
+
             Utilisateur proprietaire = utilisateurRepository.findByEmailIgnoreCase(auth.getName())
                     .orElseThrow(() -> new RuntimeException("Utilisateur non trouvé"));
 
+            // Le service s'occupe de la création et de la première sauvegarde
             Document doc = serviceDocument.enregistrerDocument(file);
             doc.setProprietaire(proprietaire);
 
+            // Mise à jour finale avec le propriétaire
             documentRepository.save(doc);
 
             return ResponseEntity.ok(Map.of(
                     "message", "Document importé avec succès",
-                    "id", doc.getId()
+                    "id", doc.getId(),
+                    "nomFichier", doc.getNomFichier()
             ));
         } catch (Exception e) {
+            e.printStackTrace();
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
                     .body(Map.of("erreur", "Erreur lors de l'upload : " + e.getMessage()));
         }
@@ -129,7 +136,7 @@ public class ControleurDocument {
     }
 
     /**
-     * ✅ Suppression sécurisée (Seul le propriétaire peut supprimer)
+     * ✅ Suppression sécurisée
      */
     @DeleteMapping("/supprimer/{id}")
     @Transactional
@@ -179,8 +186,8 @@ public class ControleurDocument {
                                         map.put("email", inv.getEmailDestinataire());
                                     },
                                     () -> {
-                                        map.put("signataire", "Inconnu");
-                                        map.put("email", "N/A");
+                                        map.put("signataire", "Auto-signé");
+                                        map.put("email", me.getEmail());
                                     }
                             );
                 }
@@ -197,7 +204,7 @@ public class ControleurDocument {
     }
 
     /**
-     * ✅ Liste des invitations envoyées par l'utilisateur
+     * ✅ Liste des invitations envoyées
      */
     @GetMapping("/mes-invitations")
     @Transactional(readOnly = true)
@@ -211,18 +218,11 @@ public class ControleurDocument {
             List<Map<String, Object>> response = list.stream().map(inv -> {
                 Map<String, Object> map = new HashMap<>();
                 map.put("id", inv.getId());
-                if (inv.getDocument() != null) {
-                    map.put("documentId", inv.getDocument().getId());
-                    map.put("nomFichier", inv.getDocument().getNomFichier());
-                } else {
-                    map.put("nomFichier", "Document sans nom");
-                }
+                map.put("nomFichier", inv.getDocument() != null ? inv.getDocument().getNomFichier() : "Document sans nom");
                 map.put("prenomSignataire", inv.getPrenomSignataire());
                 map.put("nomSignataire", inv.getNomSignataire());
                 map.put("emailDestinataire", inv.getEmailDestinataire());
                 map.put("dateInvitation", inv.getDateInvitation());
-                map.put("dateSignature", inv.getDateSignature());
-                map.put("typeSignature", inv.getTypeSignature() != null ? inv.getTypeSignature() : "simple");
                 map.put("statut", inv.getStatut());
                 return map;
             }).collect(Collectors.toList());
@@ -234,18 +234,17 @@ public class ControleurDocument {
     }
 
     /**
-     * ✅ Téléchargement spécifique pour documents signés (Utilisé par les liens d'invitation ou de suivi)
+     * ✅ Téléchargement spécifique (via liens externes)
      */
     @GetMapping("/download-signe/{documentId}")
+    @Transactional(readOnly = true)
     public ResponseEntity<?> telechargerDocumentSigne(@PathVariable Long documentId) {
         try {
             Document doc = documentRepository.findById(documentId)
-                    .orElseThrow(() -> new RuntimeException("Document ID " + documentId + " non trouvé"));
+                    .orElseThrow(() -> new RuntimeException("Document non trouvé"));
 
             byte[] contenu = doc.getContenu();
-            if (contenu == null) {
-                return ResponseEntity.status(HttpStatus.NOT_FOUND).body("Fichier binaire absent en BDD");
-            }
+            if (contenu == null) return ResponseEntity.status(HttpStatus.NOT_FOUND).build();
 
             return ResponseEntity.ok()
                     .contentType(MediaType.APPLICATION_PDF)

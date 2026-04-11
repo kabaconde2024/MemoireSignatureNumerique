@@ -1,5 +1,6 @@
 package pfe.back_end.modeles.entites;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import jakarta.persistence.*;
 import lombok.*;
@@ -28,9 +29,9 @@ public class Document {
     @Column(nullable = false)
     private String hashSha256;
 
-
     @Lob
-    @Column(name = "contenu", columnDefinition = "BYTEA") // BYTEA est spécifique à PostgreSQL pour les fichiers binaires
+    @JsonIgnore // 👈 CRUCIAL : Empêche le crash lors de la conversion JSON
+    @Column(name = "contenu", columnDefinition = "BYTEA")
     private byte[] contenu;
 
     @Column(name = "signature_numerique", columnDefinition = "TEXT")
@@ -46,23 +47,14 @@ public class Document {
 
     private LocalDateTime dateCreation;
 
-    // Dans Document.java - AJOUTER CE CHAMP
     @Column(name = "hash_document", length = 128)
-    private String hashDocument;  // SHA-256 du document signé
+    private String hashDocument; 
 
-    public String getJetonTimestamp() { return jetonTimestamp; }
-    public void setJetonTimestamp(String jetonTimestamp) { this.jetonTimestamp = jetonTimestamp; }
-
-    public LocalDateTime getDateHorodatage() { return dateHorodatage; }
-    public void setDateHorodatage(LocalDateTime dateHorodatage) { this.dateHorodatage = dateHorodatage; }
-
-    // Celui qui a créé/uploadé le document
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "proprietaire_id")
     @JsonIgnoreProperties({"hibernateLazyInitializer", "handler", "motDePasse", "codeMfa", "organisation"})
     private Utilisateur proprietaire;
 
-    // L'utilisateur interne qui doit signer ou a signé le document
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "signataire_id")
     @JsonIgnoreProperties({"hibernateLazyInitializer", "handler", "motDePasse", "codeMfa", "organisation"})
