@@ -1,17 +1,13 @@
-package pfe.back_end.modeles.dto;
-
-import lombok.AllArgsConstructor;
-import lombok.Builder;
-import lombok.Data;
-import lombok.NoArgsConstructor;
-
 @Data
 @Builder
 @AllArgsConstructor
 @NoArgsConstructor
 public class ReponseAuthentification {
-    private String token;
-    private String type = "Bearer";
+    private String accessToken; // On change 'token' en 'accessToken'
+    
+    @Builder.Default 
+    private String type = "Bearer"; // Ajout de @Builder.Default pour corriger ton warning de build
+    
     private String email;
     private String role;
     private boolean succes;
