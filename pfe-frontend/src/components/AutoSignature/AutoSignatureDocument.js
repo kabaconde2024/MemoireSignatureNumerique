@@ -72,65 +72,84 @@ const AutoSignatureDocument = ({ setSnackbar }) => {
         });
     };
 
-   const handleAutoSign = async () => {
+const handleAutoSign = async () => {
     if (!file) return;
-    
+
     if (!hasSignature) {
-        setSnackbar({ 
-            open: true, 
-            message: "❌ Vous n'avez pas de signature enregistrée...", 
-            severity: 'error' 
+        setSnackbar({
+            open: true,
+            message: "❌ Vous n'avez pas de signature enregistrée...",
+            severity: 'error'
         });
         return;
     }
-    
+
     setLoading(true);
     try {
-        // 1. Récupération du token depuis le stockage local
-        const token = localStorage.getItem('token'); 
+        // 1. Récupération du token
+        const token = localStorage.getItem('token');
 
         const formData = new FormData();
         formData.append('file', file);
 
-        // 2. Upload avec le Header Authorization
+        // 2. Upload du document 
+        // 💡 NOTE : On retire 'Content-Type': 'multipart/form-data' 
+        // pour laisser le navigateur injecter le "boundary" requis par le serveur.
         const uploadRes = await axios.post(`${API_BASE_URL}/documents/upload`, formData, {
             headers: {
-                'Content-Type': 'multipart/form-data',
-                'Authorization': `Bearer ${token}` // ✅ INDISPENSABLE
+                'Authorization': `Bearer ${token}`
             },
-            withCredentials: true 
+            withCredentials: true
         });
 
-        // 3. Signature avec le Header Authorization
+        // 3. Application de la signature automatique
         const response = await axios.post(`${API_BASE_URL}/signature/appliquer-auto-signature`, null, {
             params: {
                 documentId: uploadRes.data.id,
                 x: coords.x,
                 y: coords.y,
                 pageNumber: coords.page,
-                displayWidth: 800, 
+                displayWidth: 800,
                 displayHeight: coords.displayPageHeight
             },
             headers: {
-                'Authorization': `Bearer ${token}` // ✅ INDISPENSABLE
+                'Authorization': `Bearer ${token}`
             },
             responseType: 'blob',
             withCredentials: true
         });
 
-        const url = URL.createObjectURL(new Blob([response.data], { type: 'application/pdf' }));
+        // 4. Création de l'URL pour la prévisualisation/téléchargement
+        const blob = new Blob([response.data], { type: 'application/pdf' });
+        const url = URL.createObjectURL(blob);
+        
         setSignedFileUrl(url);
-        setSnackbar({ open: true, message: "✅ Document signé avec succès !", severity: 'success' });
+        setSnackbar({ 
+            open: true, 
+            message: "✅ Document signé avec succès !", 
+            severity: 'success' 
+        });
+
     } catch (err) {
         console.error("Erreur signature:", err);
-        // On vérifie si l'erreur est une 403 pour donner un message clair
-        const errorMsg = err.response?.status === 403 
-            ? "Session expirée ou accès refusé. Veuillez vous reconnecter."
-            : (err.response?.data?.erreur || "Erreur lors de la signature");
         
+        // Gestion précise des messages d'erreur selon le status
+        let errorMsg = "Erreur lors de la signature";
+        
+        if (err.response) {
+            if (err.response.status === 403) {
+                errorMsg = "Accès refusé (403). Vérifiez votre connexion ou les permissions du serveur.";
+            } else if (err.response.data instanceof Blob) {
+                // Si la réponse est un Blob (erreur venant d'un endpoint responseType: 'blob')
+                errorMsg = "Le serveur a rencontré une erreur lors de la génération du PDF.";
+            } else {
+                errorMsg = err.response.data?.erreur || errorMsg;
+            }
+        }
+
         setSnackbar({ open: true, message: errorMsg, severity: 'error' });
-    } finally { 
-        setLoading(false); 
+    } finally {
+        setLoading(false);
     }
 };
 
