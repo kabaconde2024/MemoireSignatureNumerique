@@ -14,7 +14,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import pfe.back_end.configuration.ServiceJwt;
 import pfe.back_end.dto.RequeteConnexion;
-import pfe.back_end.dto.ReponseAuthentification; // Import corrigé ici
+import pfe.back_end.dto.ReponseAuthentification;
 import pfe.back_end.modeles.entites.Utilisateur;
 import pfe.back_end.repositories.sql.UtilisateurRepository;
 import pfe.back_end.services.audit.ServiceAudit;
@@ -52,27 +52,29 @@ public class ConnexionController {
     @Autowired
     private HttpServletRequest httpServletRequest;
 
+    /**
+     * Connexion standard par email/password
+     */
     @PostMapping("/connexion")
     public ResponseEntity<?> connexion(@RequestBody RequeteConnexion request) {
         try {
-            // LIGNE CORRIGÉE : Utilisation du type simple grâce à l'import correct
             ReponseAuthentification reponse = connexionService.connecter(request);
             
-            // 1. On récupère le token généré par le service
+            // 1. Récupération du token
             String jwt = reponse.getAccessToken(); 
 
-            // 2. Création du cookie
+            // 2. Création du cookie sécurisé pour le Cross-Domain (Render)
             ResponseCookie cookie = ResponseCookie.from("accessToken", jwt)
                     .httpOnly(true)
-                    .secure(true)    // Crucial pour Render (HTTPS)
-                    .sameSite("None") // Crucial pour le Cross-Domain
+                    .secure(true)    // Obligatoire pour HTTPS sur Render
+                    .sameSite("None") // Obligatoire pour les domaines différents
                     .path("/")
                     .maxAge(3600)
                     .build();
 
             serviceAudit.logConnexion(request.getEmail(), true, "Connexion réussie", httpServletRequest);
 
-            // 3. On renvoie la réponse
+            // 3. Retour de la réponse avec le Cookie Set-Cookie
             return ResponseEntity.ok()
                     .header(HttpHeaders.SET_COOKIE, cookie.toString())
                     .body(reponse); 
@@ -82,6 +84,9 @@ public class ConnexionController {
         }
     }
 
+    /**
+     * Connexion via Google OAuth2
+     */
     @PostMapping("/auth/google")
     public ResponseEntity<?> authenticateGoogleUser(@RequestBody Map<String, String> payload, HttpServletResponse response) {
         try {
@@ -99,6 +104,7 @@ public class ConnexionController {
                 String roleName = (user.getRole() != null) ? user.getRole().name() : "UTILISATEUR";
                 String jwt = jwtUtils.generateToken(user.getEmail(), roleName);
 
+                // Cookie identique pour Google
                 ResponseCookie googleCookie = ResponseCookie.from("accessToken", jwt)
                         .httpOnly(true)
                         .secure(true)
@@ -107,19 +113,19 @@ public class ConnexionController {
                         .maxAge(3600)
                         .build();
 
-                Map<String, Object> reponse = new HashMap<>();
-                reponse.put("role", roleName);
-                reponse.put("email", user.getEmail());
-                reponse.put("userId", user.getId());
-                reponse.put("prenom", user.getPrenom());
-                reponse.put("nom", user.getNom());
-                reponse.put("statut", user.getStatutCycleVie());
+                Map<String, Object> reponseBody = new HashMap<>();
+                reponseBody.put("role", roleName);
+                reponseBody.put("email", user.getEmail());
+                reponseBody.put("userId", user.getId());
+                reponseBody.put("prenom", user.getPrenom());
+                reponseBody.put("nom", user.getNom());
+                reponseBody.put("statut", user.getStatutCycleVie());
 
                 serviceAudit.logConnexion(email, true, "Connexion Google réussie", httpServletRequest);
 
                 return ResponseEntity.ok()
                         .header(HttpHeaders.SET_COOKIE, googleCookie.toString())
-                        .body(reponse);
+                        .body(reponseBody);
             }
             return ResponseEntity.status(401).body(Map.of("erreur", "Authentification Google invalide"));
         } catch (Exception e) {
@@ -128,6 +134,9 @@ public class ConnexionController {
         }
     }
 
+    /**
+     * Déconnexion par suppression du cookie
+     */
     @PostMapping("/deconnexion")
     public ResponseEntity<?> deconnexion() {
         ResponseCookie cookie = ResponseCookie.from("accessToken", "")
@@ -135,12 +144,28 @@ public class ConnexionController {
                 .secure(true)
                 .sameSite("None")
                 .path("/")
-                .maxAge(0)
+                .maxAge(0) // Expire immédiatement
                 .build();
                 
         return ResponseEntity.ok()
                 .header(HttpHeaders.SET_COOKIE, cookie.toString())
                 .body(Map.of("message", "Déconnecté."));
+    }
+
+    /**
+     * Vérification silencieuse de la validité de la session (utilisé par React au refresh)
+     */
+    @GetMapping("/auth/check")
+    public ResponseEntity<?> verifierSession(HttpServletRequest request) {
+        String token = recupererJwtDepuisCookie(request);
+        if (token == null || !jwtUtils.validateToken(token)) {
+            return ResponseEntity.ok(Map.of("authentifie", false));
+        }
+        return ResponseEntity.ok(Map.of(
+            "authentifie", true, 
+            "role", jwtUtils.getRoleFromToken(token),
+            "email", jwtUtils.getEmailFromToken(token)
+        ));
     }
 
     private String recupererJwtDepuisCookie(HttpServletRequest request) {
@@ -150,12 +175,5 @@ public class ConnexionController {
             }
         }
         return null;
-    }
-
-    @GetMapping("/auth/check")
-    public ResponseEntity<?> verifierSession(HttpServletRequest request) {
-        String token = recupererJwtDepuisCookie(request);
-        if (token == null || !jwtUtils.validateToken(token)) return ResponseEntity.ok(Map.of("authentifie", false));
-        return ResponseEntity.ok(Map.of("authentifie", true, "role", jwtUtils.getRoleFromToken(token)));
     }
 }

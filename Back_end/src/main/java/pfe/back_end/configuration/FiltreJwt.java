@@ -23,43 +23,56 @@ public class FiltreJwt extends OncePerRequestFilter {
     private ServiceJwt jwtUtils;
 
     @Override
-     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain filterChain)
-        throws ServletException, IOException {
+    protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain filterChain)
+            throws ServletException, IOException {
 
-    // 1. Chercher d'abord dans le Header Authorization (Bearer)
-    String token = null;
-    String authHeader = request.getHeader("Authorization");
-
-    if (authHeader != null && authHeader.startsWith("Bearer ")) {
-        token = authHeader.substring(7);
-    } 
-    
-    // 2. Si pas trouvé dans le header, chercher dans le cookie
-    if (token == null) {
-        token = recupererJwtDepuisCookie(request);
-    }
-
-    // 3. Validation et Authentification
-    if (token != null && jwtUtils.validateToken(token)) {
         try {
-            String email = jwtUtils.getEmailFromToken(token);
-            String role = jwtUtils.getRoleFromToken(token);
+            // 1. Chercher le token (Header ou Cookie)
+            String token = recupererToken(request);
 
-            if (email != null && SecurityContextHolder.getContext().getAuthentication() == null) {
-                SimpleGrantedAuthority authority = new SimpleGrantedAuthority(role);
-                UsernamePasswordAuthenticationToken authentication = new UsernamePasswordAuthenticationToken(
-                        email, null, Collections.singletonList(authority)
-                );
-                authentication.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
-                SecurityContextHolder.getContext().setAuthentication(authentication);
+            // 2. Validation et Authentification
+            if (token != null && jwtUtils.validateToken(token)) {
+                String email = jwtUtils.getEmailFromToken(token);
+                String role = jwtUtils.getRoleFromToken(token);
+
+                if (email != null && SecurityContextHolder.getContext().getAuthentication() == null) {
+                    // Création de l'autorité à partir du rôle (ex: ROLE_USER ou ADMIN_ENTREPRISE)
+                    SimpleGrantedAuthority authority = new SimpleGrantedAuthority(role);
+                    
+                    UsernamePasswordAuthenticationToken authentication = new UsernamePasswordAuthenticationToken(
+                            email, null, Collections.singletonList(authority)
+                    );
+                    
+                    authentication.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
+                    
+                    // Injection dans le contexte de sécurité
+                    SecurityContextHolder.getContext().setAuthentication(authentication);
+                    
+                    // Log discret pour le debug sur Render
+                    // System.out.println("✅ Utilisateur authentifié via JWT : " + email);
+                }
             }
         } catch (Exception e) {
-            System.err.println("❌ Erreur AUTH : " + e.getMessage());
+            // Log d'erreur critique (utile en phase de test sur Render)
+            System.err.println("❌ Erreur dans FiltreJwt : " + e.getMessage());
         }
+
+        filterChain.doFilter(request, response);
     }
 
-    filterChain.doFilter(request, response);
-}
+    /**
+     * Stratégie d'extraction du token : Priorité Header, puis Cookie
+     */
+    private String recupererToken(HttpServletRequest request) {
+        // A. Vérification dans le Header Authorization
+        String authHeader = request.getHeader("Authorization");
+        if (authHeader != null && authHeader.startsWith("Bearer ")) {
+            return authHeader.substring(7);
+        }
+
+        // B. Vérification dans les Cookies (accessToken)
+        return recupererJwtDepuisCookie(request);
+    }
 
     /**
      * Méthode utilitaire pour extraire le JWT du cookie "accessToken"
