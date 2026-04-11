@@ -120,7 +120,8 @@ public class ControleurSignaturePki {
             // ✅ 2. Sauvegarder le document signé sur disque
             String nouveauNom = "SIGNE_PKI_" + invitation.getDocument().getNomFichier();
 // On passe l'ID du document en premier argument
-    String cheminStockage = serviceDocument.sauvegarderSurDisque(doc.getId(), pdfSigne, nouveauNom); 
+   // CORRECT : La variable définie plus haut s'appelle 'doc'
+String cheminStockage = serviceDocument.sauvegarderSurDisque(doc.getId(), pdfSigne, nouveauNom);
             // ✅ 3. Mettre à jour le DOCUMENT
             Document doc = invitation.getDocument();
             doc.setCheminStockage(cheminStockage);
