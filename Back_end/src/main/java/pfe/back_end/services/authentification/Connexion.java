@@ -9,7 +9,6 @@ import pfe.back_end.modeles.entites.Utilisateur;
 import pfe.back_end.repositories.sql.UtilisateurRepository;
 import pfe.back_end.services.notification.ServiceNotification;
 import pfe.back_end.dto.ReponseAuthentification; 
-import pfe.back_end.dto.RequeteConnexion;
 
 import java.time.LocalDateTime;
 import java.util.Random;
@@ -25,7 +24,7 @@ public class Connexion {
     private final ServiceNotification emailService;
 
     @Transactional
-    public pfe.back_end.modeles.dto.ReponseAuthentification connecter(RequeteConnexion requete) {
+    public pfe.back_end.dto.ReponseAuthentification connecter(RequeteConnexion requete) {
         Utilisateur u = utilisateurRepository.findByEmail(requete.getEmail())
                 .orElseThrow(() -> new RuntimeException("Utilisateur non trouvé"));
 
@@ -40,7 +39,7 @@ public class Connexion {
 
         emailService.envoyerCodeMfa(u.getEmail(), code);
 
-        return pfe.back_end.modeles.dto.ReponseAuthentification.builder()
+        return pfe.back_end.dto.ReponseAuthentification.builder()
                 .succes(true)
                 .necessiteMfa(true)
                 .email(u.getEmail())
