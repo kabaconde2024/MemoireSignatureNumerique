@@ -22,8 +22,6 @@ import pfe.back_end.services.signature.ServiceSignaturePki;
 import pfe.back_end.services.signature.ServiceVerificationSignature;
 
 import java.io.ByteArrayInputStream;
-import java.nio.file.Files;
-import java.nio.file.Paths;
 import java.security.cert.CertificateFactory;
 import java.security.cert.X509Certificate;
 import java.time.LocalDateTime;
@@ -34,10 +32,8 @@ import java.util.*;
 @CrossOrigin(origins = {
     "https://localhost:3000",
     "http://localhost:3000", 
-    "https://memoire-frontend.onrender.com"  // ← AJOUTEZ CETTE LIGNE
+    "https://memoire-frontend.onrender.com"
 }, allowCredentials = "true")
-
-
 public class ControleurSignaturePki {
 
     @Autowired
@@ -49,7 +45,6 @@ public class ControleurSignaturePki {
     @Autowired
     private InvitationRepository invitationRepository;
 
-
     @Autowired
     private DocumentRepository documentRepository;
 
@@ -59,12 +54,12 @@ public class ControleurSignaturePki {
     @Autowired
     private ServiceVerificationSignature serviceVerificationSignature;
 
-
     @Autowired
     private ServiceGestionDocuments serviceDocument;
 
     @Autowired
     private ServiceAudit serviceAudit;
+
     @Autowired
     private HttpServletRequest httpServletRequest;
 
@@ -91,7 +86,10 @@ public class ControleurSignaturePki {
                 return ResponseEntity.badRequest().body(Map.of("erreur", "Ce document a déjà été signé"));
             }
 
-            byte[] pdfOriginal = serviceDocument.getContenu(invitation.getDocument().getId());
+            // Récupération du document et du contenu original
+            Document doc = invitation.getDocument(); 
+            byte[] pdfOriginal = serviceDocument.getContenu(doc.getId());
+            
             String nom = actuel.getPrenom() + " " + actuel.getNom();
             String tel = actuel.getTelephone();
             String otp = (String) payload.get("otp");
@@ -104,9 +102,10 @@ public class ControleurSignaturePki {
 
             String aliasHSM = actuel.getEmail();
 
+            // Exécution de la signature technique
             byte[] pdfSigne = serviceSignaturePki.signerDocumentPki(
                     pdfOriginal, nom, tel, otp, x, y, page,
-                    displayWidth, displayHeight, aliasHSM,invitation.getDocument().getId()
+                    displayWidth, displayHeight, aliasHSM, doc.getId()
             );
 
             // ✅ 1. Mettre à jour l'INVITATION
@@ -117,13 +116,12 @@ public class ControleurSignaturePki {
             invitation.setPageNumber(page);
             invitationRepository.save(invitation);
 
-            // ✅ 2. Sauvegarder le document signé sur disque
-            String nouveauNom = "SIGNE_PKI_" + invitation.getDocument().getNomFichier();
-// On passe l'ID du document en premier argument
-   // CORRECT : La variable définie plus haut s'appelle 'doc'
-String cheminStockage = serviceDocument.sauvegarderSurDisque(doc.getId(), pdfSigne, nouveauNom);
-            // ✅ 3. Mettre à jour le DOCUMENT
-            Document doc = invitation.getDocument();
+            // ✅ 2. Sauvegarder le contenu binaire en BDD via le service
+            String nouveauNom = "SIGNE_PKI_" + doc.getNomFichier();
+            // CORRECTION : Appel de la méthode avec 'doc' déjà initialisé
+            String cheminStockage = serviceDocument.sauvegarderSurDisque(doc.getId(), pdfSigne, nouveauNom);
+
+            // ✅ 3. Mettre à jour les métadonnées du DOCUMENT
             doc.setCheminStockage(cheminStockage);
             doc.setNomFichier(nouveauNom);
             doc.setEstSigne(true);
@@ -131,26 +129,23 @@ String cheminStockage = serviceDocument.sauvegarderSurDisque(doc.getId(), pdfSig
             doc.setDateHorodatage(LocalDateTime.now());
             doc.setSignataire(actuel);
 
-            // ✅ 4. CRUCIAL: Stocker la signature numérique en base64
+            // ✅ 4. Stocker la signature numérique en base64 pour les preuves
             String signatureBase64 = Base64.getEncoder().encodeToString(pdfSigne);
             doc.setSignatureNumerique(signatureBase64);
 
             documentRepository.save(doc);
 
-            System.out.println("✅ Signature PKI réussie - Document: " + doc.getNomFichier() +
-                    " | estSigne=" + doc.isEstSigne() +
-                    " | signatureNumerique length=" + signatureBase64.length());
+            // Audit
+            serviceAudit.logSignatureDocument(
+                    actuel.getId(), actuel.getEmail(),
+                    doc.getId(), doc.getNomFichier(),
+                    "PKI", "SUCCESS", "Signature PKI avec certificat", httpServletRequest
+            );
 
             // Retourner le PDF signé
             HttpHeaders headers = new HttpHeaders();
             headers.setContentType(MediaType.APPLICATION_PDF);
             headers.setContentDispositionFormData("attachment", nouveauNom);
-
-            serviceAudit.logSignatureDocument(
-                    actuel.getId(), actuel.getEmail(),
-                    invitation.getDocument().getId(), invitation.getDocument().getNomFichier(),
-                    "PKI", "SUCCESS", "Signature PKI avec certificat", httpServletRequest
-            );
 
             return ResponseEntity.ok()
                     .headers(headers)
@@ -161,7 +156,6 @@ String cheminStockage = serviceDocument.sauvegarderSurDisque(doc.getId(), pdfSig
             return ResponseEntity.internalServerError().body(Map.of("erreur", e.getMessage()));
         }
     }
-
 
     @GetMapping("/verifier-certificat-expediteur/{token}")
     public ResponseEntity<?> verifierCertificatExpediteur(@PathVariable String token) {
@@ -178,9 +172,7 @@ String cheminStockage = serviceDocument.sauvegarderSurDisque(doc.getId(), pdfSig
                 ));
             }
 
-            // Charger et vérifier le certificat de l'expéditeur
             X509Certificate certificat = chargerCertificatDepuisPem(expediteur.getCertificatPem());
-
             ServiceVerificationCertificat.VerificationResult result =
                     serviceVerificationCertificat.verifierCertificat(expediteur, certificat);
 
@@ -210,6 +202,7 @@ String cheminStockage = serviceDocument.sauvegarderSurDisque(doc.getId(), pdfSig
         CertificateFactory cf = CertificateFactory.getInstance("X.509");
         return (X509Certificate) cf.generateCertificate(new ByteArrayInputStream(certBytes));
     }
+
     @PostMapping("/verifier-document-signe")
     public ResponseEntity<?> verifierDocumentSigne(@RequestBody Map<String, String> payload) {
         try {
@@ -221,8 +214,6 @@ String cheminStockage = serviceDocument.sauvegarderSurDisque(doc.getId(), pdfSig
             }
 
             Document doc = docOpt.get();
-
-            // ✅ Chercher l'invitation associée à ce document
             Optional<InvitationSignature> invOpt = invitationRepository.findByDocumentId(doc.getId());
 
             Map<String, Object> response = new HashMap<>();

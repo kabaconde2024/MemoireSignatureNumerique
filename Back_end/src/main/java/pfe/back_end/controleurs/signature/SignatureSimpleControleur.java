@@ -38,17 +38,21 @@ public class SignatureSimpleControleur {
     @Transactional
     public ResponseEntity<?> signerSimple(@RequestBody SignatureRequest request) {
         try {
+            // 1. Récupérer l'invitation à partir du token
             InvitationSignature inv = invitationRepository.findByTokenSignature(request.getToken())
                     .orElseThrow(() -> new RuntimeException("Invitation invalide"));
 
-            // Récupérer le contenu du document original
-            byte[] pdfOriginal = serviceDocument.getContenu(inv.getDocument().getId());
+            // 2. Initialiser la variable 'doc' dès maintenant pour pouvoir l'utiliser partout
+            Document doc = inv.getDocument();
 
-            // ✅ AJOUTER documentId (dernier paramètre)
+            // 3. Récupérer le contenu du document original
+            byte[] pdfOriginal = serviceDocument.getContenu(doc.getId());
+
+            // 4. Exécuter la signature technique
             byte[] pdfSigne = serviceSignatureSimple.signerDocumentSimple(
                     pdfOriginal,                                    // pdfBytes
                     request.getNom(),                               // nom
-                 inv.getEmailDestinataire(), // <--- UTILISER L'EMAIL ICI
+                    inv.getEmailDestinataire(),                     // email (depuis l'invitation)
                     request.getOtp(),                               // otp
                     request.getX(),                                 // x
                     request.getY(),                                 // y
@@ -56,10 +60,10 @@ public class SignatureSimpleControleur {
                     request.getDisplayWidth(),                      // displayWidth
                     request.getDisplayHeight(),                     // displayHeight
                     request.getSignatureImage(),                    // signatureImageBase64
-                    inv.getDocument().getId()                       // ✅ documentId (AJOUTÉ)
+                    doc.getId()                                     // documentId
             );
 
-            // Mettre à jour le statut de l'invitation
+            // 5. Mettre à jour le statut de l'invitation
             inv.setStatut("SIGNE");
             inv.setDateSignature(LocalDateTime.now());
             inv.setCoordonneeX(request.getX());
@@ -67,18 +71,19 @@ public class SignatureSimpleControleur {
             inv.setPageNumber(request.getPageNumber());
             invitationRepository.save(inv);
 
-            // Sauvegarder le document signé sur disque
-            String nouveauNom = "SIGNE_" + inv.getDocument().getNomFichier();
-// On passe l'ID du document en premier argument
-// CORRECT : On utilise 'doc.getId()' (variable définie ligne 68 de ton code)
-String cheminStockage = serviceDocument.sauvegarderSurDisque(doc.getId(), pdfSigne, nouveauNom);
-            // Mettre à jour le document original avec la version signée
-            Document doc = inv.getDocument();
+            // 6. Sauvegarder le document signé
+            String nouveauNom = "SIGNE_" + doc.getNomFichier();
+            
+            // ✅ CORRECTION : 'doc' est maintenant bien défini avant cet appel
+            String cheminStockage = serviceDocument.sauvegarderSurDisque(doc.getId(), pdfSigne, nouveauNom);
+
+            // 7. Mettre à jour les métadonnées du document original
             doc.setCheminStockage(cheminStockage);
             doc.setEstSigne(true);
             doc.setStatut(pfe.back_end.modeles.entites.StatutDocument.SIGNE);
             documentRepository.save(doc);
 
+            // 8. Retourner le fichier PDF signé
             return ResponseEntity.ok()
                     .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + nouveauNom + "\"")
                     .contentType(MediaType.APPLICATION_PDF)
