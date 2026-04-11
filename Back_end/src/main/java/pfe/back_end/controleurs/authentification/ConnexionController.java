@@ -14,23 +14,23 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import pfe.back_end.configuration.ServiceJwt;
 import pfe.back_end.dto.RequeteConnexion;
+import pfe.back_end.dto.ReponseAuthentification; // Import corrigé ici
 import pfe.back_end.modeles.entites.Utilisateur;
 import pfe.back_end.repositories.sql.UtilisateurRepository;
 import pfe.back_end.services.audit.ServiceAudit;
 import pfe.back_end.services.authentification.ActivationCompte;
 import pfe.back_end.services.authentification.Connexion;
-import pfe.back_end.dto.ReponseAuthentification;
+
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
-
 
 @RestController
 @RequestMapping("/api")
 @CrossOrigin(origins = {
     "https://localhost:3000",
     "http://localhost:3000", 
-    "https://memoire-frontend.onrender.com"  // ← AJOUTEZ CETTE LIGNE
+    "https://memoire-frontend.onrender.com"
 }, allowCredentials = "true")
 public class ConnexionController {
 
@@ -52,36 +52,35 @@ public class ConnexionController {
     @Autowired
     private HttpServletRequest httpServletRequest;
 
-@PostMapping("/connexion")
-public ResponseEntity<?> connexion(@RequestBody RequeteConnexion request) {
-    try {
-        pfe.back_end.modeles.dto.ReponseAuthentification reponse = connexionService.connecter(request);
-        
-        // 1. On récupère le token généré par le service
-        String jwt = reponse.getAccessToken(); 
+    @PostMapping("/connexion")
+    public ResponseEntity<?> connexion(@RequestBody RequeteConnexion request) {
+        try {
+            // LIGNE CORRIGÉE : Utilisation du type simple grâce à l'import correct
+            ReponseAuthentification reponse = connexionService.connecter(request);
+            
+            // 1. On récupère le token généré par le service
+            String jwt = reponse.getAccessToken(); 
 
-        // 2. Création du cookie identique à celui de Google
-        ResponseCookie cookie = ResponseCookie.from("accessToken", jwt)
-                .httpOnly(true)
-                .secure(true)    // Crucial pour Render
-                .sameSite("None") // Crucial pour le Cross-Domain
-                .path("/")
-                .maxAge(3600)
-                .build();
+            // 2. Création du cookie
+            ResponseCookie cookie = ResponseCookie.from("accessToken", jwt)
+                    .httpOnly(true)
+                    .secure(true)    // Crucial pour Render (HTTPS)
+                    .sameSite("None") // Crucial pour le Cross-Domain
+                    .path("/")
+                    .maxAge(3600)
+                    .build();
 
-        serviceAudit.logConnexion(request.getEmail(), true, "Connexion réussie", httpServletRequest);
+            serviceAudit.logConnexion(request.getEmail(), true, "Connexion réussie", httpServletRequest);
 
-        // 3. On renvoie la réponse SANS le token (pour la sécurité)
-        // ou on le laisse mais le front privilégiera le cookie
-        return ResponseEntity.ok()
-                .header(HttpHeaders.SET_COOKIE, cookie.toString())
-                .body(reponse); 
-    } catch (Exception e) {
-        serviceAudit.logConnexion(request.getEmail(), false, e.getMessage(), httpServletRequest);
-        return ResponseEntity.status(401).body(Map.of("erreur", e.getMessage()));
+            // 3. On renvoie la réponse
+            return ResponseEntity.ok()
+                    .header(HttpHeaders.SET_COOKIE, cookie.toString())
+                    .body(reponse); 
+        } catch (Exception e) {
+            serviceAudit.logConnexion(request.getEmail(), false, e.getMessage(), httpServletRequest);
+            return ResponseEntity.status(401).body(Map.of("erreur", e.getMessage()));
+        }
     }
-}
-
 
     @PostMapping("/auth/google")
     public ResponseEntity<?> authenticateGoogleUser(@RequestBody Map<String, String> payload, HttpServletResponse response) {
@@ -116,7 +115,6 @@ public ResponseEntity<?> connexion(@RequestBody RequeteConnexion request) {
                 reponse.put("nom", user.getNom());
                 reponse.put("statut", user.getStatutCycleVie());
 
-                // ✅ Journaliser la connexion Google réussie
                 serviceAudit.logConnexion(email, true, "Connexion Google réussie", httpServletRequest);
 
                 return ResponseEntity.ok()
@@ -125,26 +123,25 @@ public ResponseEntity<?> connexion(@RequestBody RequeteConnexion request) {
             }
             return ResponseEntity.status(401).body(Map.of("erreur", "Authentification Google invalide"));
         } catch (Exception e) {
-            // ✅ Journaliser l'échec de connexion Google
             serviceAudit.logConnexion(null, false, "Erreur Google: " + e.getMessage(), httpServletRequest);
             return ResponseEntity.status(401).body(Map.of("erreur", e.getMessage()));
         }
     }
 
-@PostMapping("/deconnexion")
-public ResponseEntity<?> deconnexion() {
-    ResponseCookie cookie = ResponseCookie.from("accessToken", "")
-            .httpOnly(true)
-            .secure(true)
-            .sameSite("None")
-            .path("/")
-            .maxAge(0)
-            .build();
-            
-    return ResponseEntity.ok()
-            .header(HttpHeaders.SET_COOKIE, cookie.toString())
-            .body(Map.of("message", "Déconnecté."));
-}
+    @PostMapping("/deconnexion")
+    public ResponseEntity<?> deconnexion() {
+        ResponseCookie cookie = ResponseCookie.from("accessToken", "")
+                .httpOnly(true)
+                .secure(true)
+                .sameSite("None")
+                .path("/")
+                .maxAge(0)
+                .build();
+                
+        return ResponseEntity.ok()
+                .header(HttpHeaders.SET_COOKIE, cookie.toString())
+                .body(Map.of("message", "Déconnecté."));
+    }
 
     private String recupererJwtDepuisCookie(HttpServletRequest request) {
         if (request.getCookies() != null) {
