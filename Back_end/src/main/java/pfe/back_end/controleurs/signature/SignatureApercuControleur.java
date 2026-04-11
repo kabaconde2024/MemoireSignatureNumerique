@@ -15,7 +15,6 @@ import java.nio.file.Paths;
 
 @RestController
 @RequestMapping("/api/signature")
-@CrossOrigin(origins = "*")
 public class SignatureApercuControleur {
 
     @Autowired private InvitationRepository invitationRepository;
