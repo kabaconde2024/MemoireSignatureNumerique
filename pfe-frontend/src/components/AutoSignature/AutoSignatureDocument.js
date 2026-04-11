@@ -19,11 +19,35 @@ const AutoSignatureDocument = ({ setSnackbar }) => {
 
     const API_BASE_URL = 'https://memoiresignaturenumerique.onrender.com/api';
 
+    // Fonction utilitaire pour récupérer le token du cookie
+    const getAccessToken = () => {
+        const cookies = document.cookie.split(';');
+        for (let cookie of cookies) {
+            const [name, value] = cookie.trim().split('=');
+            if (name === 'accessToken') {
+                return value;
+            }
+        }
+        return null;
+    };
+
+    // Configuration d'axios avec le token
+    const createAxiosConfig = () => {
+        const token = getAccessToken();
+        return {
+            withCredentials: true,
+            headers: token ? {
+                'Authorization': `Bearer ${token}`
+            } : {}
+        };
+    };
+
     // ✅ Vérifier si l'utilisateur a une signature enregistrée
     useEffect(() => {
         const checkUserSignature = async () => {
             try {
-                const response = await axios.get(`${API_BASE_URL}/utilisateur/mon-profil`, { withCredentials: true });
+                const config = createAxiosConfig();
+                const response = await axios.get(`${API_BASE_URL}/utilisateur/mon-profil`, config);
                 const userData = response.data;
                 if (userData.imageSignature && userData.imageSignature !== '') {
                     setHasSignature(true);
@@ -87,13 +111,14 @@ const AutoSignatureDocument = ({ setSnackbar }) => {
         
         setLoading(true);
         try {
+            const config = createAxiosConfig();
             const formData = new FormData();
             formData.append('file', file);
 
-            const uploadRes = await axios.post(`${API_BASE_URL}/documents/upload`, formData, {
-                withCredentials: true 
-            });
+            // Upload du document
+            const uploadRes = await axios.post(`${API_BASE_URL}/documents/upload`, formData, config);
 
+            // Application de la signature
             const response = await axios.post(`${API_BASE_URL}/signature/appliquer-auto-signature`, null, {
                 params: {
                     documentId: uploadRes.data.id,
@@ -104,7 +129,7 @@ const AutoSignatureDocument = ({ setSnackbar }) => {
                     displayHeight: coords.displayPageHeight
                 },
                 responseType: 'blob',
-                withCredentials: true
+                ...config
             });
 
             const url = URL.createObjectURL(new Blob([response.data], { type: 'application/pdf' }));
@@ -112,7 +137,7 @@ const AutoSignatureDocument = ({ setSnackbar }) => {
             setSnackbar({ open: true, message: "✅ Document signé avec succès !", severity: 'success' });
         } catch (err) {
             console.error("Erreur signature:", err);
-            const errorMsg = err.response?.data?.erreur || "Erreur lors de la signature";
+            const errorMsg = err.response?.data?.erreur || err.message || "Erreur lors de la signature";
             setSnackbar({ open: true, message: errorMsg, severity: 'error' });
         } finally { 
             setLoading(false); 
