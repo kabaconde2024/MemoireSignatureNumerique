@@ -19,8 +19,7 @@ import java.util.Arrays;
 
 @Configuration
 @EnableWebSecurity
-@EnableGlobalMethodSecurity(prePostEnabled = true)  // ✅ AJOUTEZ CETTE LIGNE
-
+@EnableGlobalMethodSecurity(prePostEnabled = true)
 public class ConfigurationSecurite {
 
     @Autowired
@@ -41,7 +40,8 @@ public class ConfigurationSecurite {
                         // Autoriser les requêtes de pré-vérification CORS
                         .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
 
-                        // --- ROUTES PUBLIQUES (Auth & Système) ---
+                        // ==================== ROUTES PUBLIQUES ====================
+                        // Routes d'authentification et système
                         .requestMatchers(
                                 "/",
                                 "/api/auth/**",
@@ -56,7 +56,7 @@ public class ConfigurationSecurite {
                                 "/api/debug/**"
                         ).permitAll()
 
-                        // --- ROUTES PUBLIQUES POUR SIGNATAIRES EXTERNES (Sans compte) ---
+                        // Routes publiques pour signatures externes (sans authentification)
                         .requestMatchers(
                                 "/api/signature/details/**",
                                 "/api/signature/apercu/**",
@@ -66,21 +66,21 @@ public class ConfigurationSecurite {
                                 "/api/invitations/verifier/**"
                         ).permitAll()
 
-                        // --- ROUTES PRIVÉES (Rôles spécifiques) ---
+                        // ==================== ROUTES PRIVÉES (Rôles spécifiques) ====================
                         .requestMatchers("/api/entreprise/**").hasAuthority("ADMIN_ENTREPRISE")
                         .requestMatchers("/api/super-admin/**").hasAuthority("SUPER_ADMIN")
                         
-                        // ✅ CORRECTION CRUCIALE : Routes d'upload et signature
-                        // Autoriser tous les utilisateurs authentifiés (quel que soit leur rôle)
+                        // ==================== ROUTES AUTHENTIFIÉES (Sans rôle spécifique) ====================
+                        // Routes nécessitant juste d'être connecté
                         .requestMatchers(
                                 "/api/documents/upload",
                                 "/api/signature/appliquer-auto-signature",
-                                "/api/signature/**",
-                                "/api/documents/**"
+                                "/api/documents/**",
+                                "/api/utilisateur/**"
                         ).authenticated()
                         
-                        // --- TOUT LE RESTE ---
-                        // Nécessite d'être connecté
+                        // ==================== TOUT LE RESTE ====================
+                        // Par défaut, nécessite authentification
                         .anyRequest().authenticated()
                 )
                 // Injection du filtre JWT avant le filtre de username/password
@@ -100,6 +100,7 @@ public class ConfigurationSecurite {
                 "https://memoire-frontend.onrender.com"
         ));
         
+        // Méthodes HTTP autorisées
         configuration.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"));
         
         // Headers autorisés
@@ -113,14 +114,14 @@ public class ConfigurationSecurite {
                 "X-Debug-Mode"
         ));
         
-        // IMPORTANT : Autoriser l'envoi des cookies (withCredentials: true côté React)
+        // Autoriser l'envoi des cookies (withCredentials: true côté React)
         configuration.setAllowCredentials(true);
         
         // Headers exposés au client
         configuration.setExposedHeaders(Arrays.asList(
                 "Authorization", 
                 "Set-Cookie",
-                "Content-Disposition" // Important pour le téléchargement de fichiers
+                "Content-Disposition"
         ));
 
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
