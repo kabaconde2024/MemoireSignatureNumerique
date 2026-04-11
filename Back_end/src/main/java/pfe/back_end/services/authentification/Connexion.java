@@ -8,6 +8,8 @@ import pfe.back_end.dto.RequeteConnexion;
 import pfe.back_end.modeles.entites.Utilisateur;
 import pfe.back_end.repositories.sql.UtilisateurRepository;
 import pfe.back_end.services.notification.ServiceNotification;
+import pfe.back_end.dto.ReponseAuthentification; 
+import pfe.back_end.dto.RequeteConnexion;
 
 import java.time.LocalDateTime;
 import java.util.Random;
