@@ -20,25 +20,27 @@ const AutoSignatureDocument = ({ setSnackbar }) => {
     const API_BASE_URL = 'https://memoiresignaturenumerique.onrender.com/api';
 
     // ✅ Vérifier si l'utilisateur a une signature enregistrée
-    useEffect(() => {
-        const checkUserSignature = async () => {
-            try {
-                const response = await axios.get(`${API_BASE_URL}/utilisateur/mon-profil`, { withCredentials: true });
-                const userData = response.data;
-                if (userData.imageSignature && userData.imageSignature !== '') {
-                    setHasSignature(true);
-                } else {
-                    setHasSignature(false);
+  useEffect(() => {
+    const checkUserSignature = async () => {
+        const token = localStorage.getItem('token'); // Récupérer le token
+        try {
+            const response = await axios.get(`${API_BASE_URL}/utilisateur/mon-profil`, { 
+                withCredentials: true,
+                headers: {
+                    'Authorization': `Bearer ${token}` // Ajouter le header ici aussi !
                 }
-            } catch (error) {
-                console.error("Erreur vérification signature:", error);
-                setHasSignature(false);
-            } finally {
-                setCheckingSignature(false);
-            }
-        };
-        checkUserSignature();
-    }, []);
+            });
+            const userData = response.data;
+            setHasSignature(!!(userData.imageSignature && userData.imageSignature !== ''));
+        } catch (error) {
+            console.error("Erreur vérification signature:", error);
+            setHasSignature(false);
+        } finally {
+            setCheckingSignature(false);
+        }
+    };
+    checkUserSignature();
+}, []);
 
     const onDocumentLoadSuccess = ({ numPages }) => {
         setNumPages(numPages);
@@ -75,24 +77,14 @@ const AutoSignatureDocument = ({ setSnackbar }) => {
 const handleAutoSign = async () => {
     if (!file) return;
 
-    // 1. Vérification de la signature enregistrée (sécurité locale)
     if (!hasSignature) {
-        setSnackbar({
-            open: true,
-            message: "❌ Vous n'avez pas de signature enregistrée...",
-            severity: 'error'
-        });
+        setSnackbar({ open: true, message: "❌ Signature requise", severity: 'error' });
         return;
     }
 
-    // 2. Récupération du token pour authentifier la requête sur Render
     const token = localStorage.getItem('token');
     if (!token) {
-        setSnackbar({
-            open: true,
-            message: "❌ Session expirée, veuillez vous reconnecter.",
-            severity: 'error'
-        });
+        setSnackbar({ open: true, message: "❌ Session expirée, reconnectez-vous.", severity: 'error' });
         return;
     }
 
@@ -101,60 +93,45 @@ const handleAutoSign = async () => {
         const formData = new FormData();
         formData.append('file', file);
 
-        // ÉTAPE 1 : Upload du document
-        // On envoie le token dans le Header pour éviter le blocage des cookies tiers
+        // ÉTAPE 1 : Upload
         const uploadRes = await axios.post(`${API_BASE_URL}/documents/upload`, formData, {
             withCredentials: true,
-            headers: {
-                'Authorization': `Bearer ${token}`
-            }
+            headers: { 'Authorization': `Bearer ${token}` }
         });
 
         const documentId = uploadRes.data.id;
 
-        // ÉTAPE 2 : Application de la signature
-        // On utilise les coordonnées capturées sur l'interface
+        // ÉTAPE 2 : Signature
         const response = await axios.post(`${API_BASE_URL}/signature/appliquer-auto-signature`, null, {
             params: {
                 documentId: documentId,
-                x: coords.x,
-                y: coords.y,
+                x: Math.round(coords.x), // On arrondit pour le backend
+                y: Math.round(coords.y),
                 pageNumber: coords.page,
-                displayWidth: 800, // Largeur fixe utilisée dans le composant Document
+                displayWidth: 800,
                 displayHeight: coords.displayPageHeight
             },
-            responseType: 'blob', // Important pour recevoir le PDF binaire
+            responseType: 'blob',
             withCredentials: true,
-            headers: {
-                'Authorization': `Bearer ${token}`
-            }
+            headers: { 'Authorization': `Bearer ${token}` }
         });
 
-        // ÉTAPE 3 : Traitement du fichier signé
-        const blob = new Blob([response.data], { type: 'application/pdf' });
-        const url = URL.createObjectURL(blob);
+        // ÉTAPE 3 : Création de l'URL du fichier signé
+        const signedBlob = new Blob([response.data], { type: 'application/pdf' });
+        const url = URL.createObjectURL(signedBlob);
         
-        setSignedFileUrl(url); // Affiche le PDF signé dans l'aperçu
+        // Nettoyage de l'ancienne URL si elle existe pour éviter les fuites mémoire
+        if (signedFileUrl) URL.revokeObjectURL(signedFileUrl);
         
-        setSnackbar({ 
-            open: true, 
-            message: "✅ Document signé avec succès !", 
-            severity: 'success' 
-        });
+        setSignedFileUrl(url);
+        setSnackbar({ open: true, message: "✅ Document signé avec succès !", severity: 'success' });
 
     } catch (err) {
-        console.error("Erreur lors du processus de signature:", err);
-        
-        let messageErreur = "Erreur lors de la signature.";
-        if (err.response && err.response.status === 403) {
-            messageErreur = "Session invalide ou droits insuffisants (403).";
-        }
-
-        setSnackbar({ 
-            open: true, 
-            message: `❌ ${messageErreur}`, 
-            severity: 'error' 
-        });
+        console.error("Détails erreur:", err.response?.data || err.message);
+        const msg = err.response?.status === 403 
+            ? "Accès refusé. Vérifiez votre connexion." 
+            : "Erreur technique lors de la signature.";
+        setSnackbar({ open: true, message: `❌ ${msg}`, severity: 'error' });
     } finally {
         setLoading(false);
     }
