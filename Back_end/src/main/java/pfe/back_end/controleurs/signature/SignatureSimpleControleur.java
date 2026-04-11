@@ -69,8 +69,8 @@ public class SignatureSimpleControleur {
 
             // Sauvegarder le document signé sur disque
             String nouveauNom = "SIGNE_" + inv.getDocument().getNomFichier();
-            String cheminStockage = serviceDocument.sauvegarderSurDisque(pdfSigne, nouveauNom);
-
+// On passe l'ID du document en premier argument
+String cheminStockage = serviceDocument.sauvegarderSurDisque(doc.getId(), pdfSigne, nouveauNom);
             // Mettre à jour le document original avec la version signée
             Document doc = inv.getDocument();
             doc.setCheminStockage(cheminStockage);

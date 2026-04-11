@@ -139,4 +139,29 @@ public class ServiceGestionDocuments {
             throw new RuntimeException("Erreur technique : Algorithme SHA-256 introuvable", e);
         }
     }
+
+
+    /**
+ * ✅ Sauvegarde le contenu binaire en BDD et génère un chemin logique.
+ */
+@Transactional
+public String sauvegarderSurDisque(Long idDocument, byte[] contenu, String nomFichier) {
+    // 1. Récupérer le document existant
+    Document doc = documentRepository.findById(idDocument)
+            .orElseThrow(() -> new RuntimeException("Document introuvable ID: " + idDocument));
+
+    // 2. Mettre à jour le contenu binaire (le PDF signé)
+    doc.setContenu(contenu);
+    doc.setTaille((long) contenu.length);
+
+    // 3. Générer le chemin logique
+    String chemin = "db://" + System.currentTimeMillis() + "_" + nomFichier;
+    doc.setCheminStockage(chemin);
+
+    // 4. Sauvegarder les modifications
+    documentRepository.save(doc);
+
+    return chemin;
+}
+
 }
