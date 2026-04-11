@@ -47,60 +47,63 @@ const Connexion = ({ onSwitch, onLoginSuccess }) => {
         else navigate('/user-dashboard');
     };
 
-    const handleLogin = async () => {
-        setLoading(true);
-        setError('');
-        try {
-            const response = await API.post('/connexion', { 
-                email: email.trim().toLowerCase(), 
-                motDePasse 
-            });
-            
-            // Le cookie accessToken est posé automatiquement par le Backend ici
-            
-            if (response.data.necessiteMfa) {
-                setIsMfaRequired(true);
-            } else {
-                localStorage.setItem('role', response.data.role);
-                localStorage.setItem('user_info', JSON.stringify({
-                    prenom: response.data.prenom,
-                    nom: response.data.nom,
-                    email: email
-                }));
-                if (onLoginSuccess) onLoginSuccess();
-                redirectUserByRole(response.data.role);
-            }
-        } catch (err) {
-            setError(err.response?.data?.erreur || "Identifiants incorrects.");
-        } finally { setLoading(false); }
-    };
+   const handleLogin = async () => {
+    setLoading(true);
+    setError('');
+    try {
+        const response = await API.post('/connexion', { 
+            email: email.trim().toLowerCase(), 
+            motDePasse 
+        });
+        
+        // ✅ Le cookie accessToken est posé AUTOMATIQUEMENT par le navigateur ici.
+        // On ne stocke plus le token manuellement.
 
-    const handleVerifyOtp = async () => {
-        setLoading(true);
-        setError('');
-        try {
-            const response = await API.post('/verifier-otp', { 
-                email: email.trim().toLowerCase(), 
-                code: otpCode.trim() 
-            });
-            
-            // Le cookie accessToken est posé par le backend lors de la validation OTP
-            
+        if (response.data.necessiteMfa) {
+            setIsMfaRequired(true);
+        } else {
+            // On garde les infos non sensibles dans le localStorage
             localStorage.setItem('role', response.data.role);
             localStorage.setItem('user_info', JSON.stringify({
                 prenom: response.data.prenom,
                 nom: response.data.nom,
-                organisation: response.data.organisationNom,
-                email: response.data.email
+                email: email
             }));
-
+            
             if (onLoginSuccess) onLoginSuccess();
-            setTimeout(() => redirectUserByRole(response.data.role), 100);
+            redirectUserByRole(response.data.role);
+        }
+    } catch (err) {
+        setError(err.response?.data?.erreur || "Identifiants incorrects.");
+    } finally { setLoading(false); }
+};
 
-        } catch (err) {
-            setError("Code OTP invalide ou expiré.");
-        } finally { setLoading(false); }
-    };
+
+  const handleVerifyOtp = async () => {
+    setLoading(true);
+    setError('');
+    try {
+        const response = await API.post('/verifier-otp', { 
+            email: email.trim().toLowerCase(), 
+            code: otpCode.trim() 
+        });
+        
+        // ✅ Le cookie est géré par le header Set-Cookie du backend
+        
+        localStorage.setItem('role', response.data.role);
+        localStorage.setItem('user_info', JSON.stringify({
+            prenom: response.data.prenom,
+            nom: response.data.nom,
+            email: response.data.email
+        }));
+
+        if (onLoginSuccess) onLoginSuccess();
+        setTimeout(() => redirectUserByRole(response.data.role), 100);
+
+    } catch (err) {
+        setError("Code OTP invalide ou expiré.");
+    } finally { setLoading(false); }
+};
 
     const handleGoogleSuccess = async (googleData) => {
         setLoading(true);
