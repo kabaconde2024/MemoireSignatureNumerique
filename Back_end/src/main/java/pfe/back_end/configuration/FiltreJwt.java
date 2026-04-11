@@ -26,17 +26,27 @@ public class FiltreJwt extends OncePerRequestFilter {
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain filterChain)
             throws ServletException, IOException {
 
-        try {
-            // 1. Chercher le token (Header ou Cookie)
-            String token = recupererToken(request);
+        // Log uniquement en développement ou pour debug
+        boolean isDebug = request.getHeader("X-Debug-Mode") != null;
+        String uri = request.getRequestURI();
+        
+        // Ne log que les endpoints sensibles ou en debug
+        if (isDebug || uri.contains("/documents/upload") || uri.contains("/signature/")) {
+            System.out.println("🔍 [FiltreJWT] URL: " + uri);
+        }
 
-            // 2. Validation et Authentification
+        try {
+            String token = recupererToken(request);
+            
+            if (isDebug && token != null) {
+                System.out.println("🔍 [FiltreJWT] Token trouvé, longueur: " + token.length());
+            }
+
             if (token != null && jwtUtils.validateToken(token)) {
                 String email = jwtUtils.getEmailFromToken(token);
                 String role = jwtUtils.getRoleFromToken(token);
 
                 if (email != null && SecurityContextHolder.getContext().getAuthentication() == null) {
-                    // Création de l'autorité à partir du rôle (ex: ROLE_USER ou ADMIN_ENTREPRISE)
                     SimpleGrantedAuthority authority = new SimpleGrantedAuthority(role);
                     
                     UsernamePasswordAuthenticationToken authentication = new UsernamePasswordAuthenticationToken(
@@ -44,40 +54,31 @@ public class FiltreJwt extends OncePerRequestFilter {
                     );
                     
                     authentication.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
-                    
-                    // Injection dans le contexte de sécurité
                     SecurityContextHolder.getContext().setAuthentication(authentication);
                     
-                    // Log discret pour le debug sur Render
-                    // System.out.println("✅ Utilisateur authentifié via JWT : " + email);
+                    if (isDebug) {
+                        System.out.println("✅ [FiltreJWT] Utilisateur authentifié: " + email + " (rôle: " + role + ")");
+                    }
                 }
+            } else if (isDebug) {
+                System.out.println("❌ [FiltreJWT] Authentification échouée pour: " + uri);
             }
         } catch (Exception e) {
-            // Log d'erreur critique (utile en phase de test sur Render)
-            System.err.println("❌ Erreur dans FiltreJwt : " + e.getMessage());
+            System.err.println("❌ [FiltreJWT] Erreur: " + e.getMessage());
+            if (isDebug) e.printStackTrace();
         }
 
         filterChain.doFilter(request, response);
     }
 
-    /**
-     * Stratégie d'extraction du token : Priorité Header, puis Cookie
-     */
     private String recupererToken(HttpServletRequest request) {
-        // A. Vérification dans le Header Authorization
+        // Priorité au Header Authorization
         String authHeader = request.getHeader("Authorization");
         if (authHeader != null && authHeader.startsWith("Bearer ")) {
             return authHeader.substring(7);
         }
 
-        // B. Vérification dans les Cookies (accessToken)
-        return recupererJwtDepuisCookie(request);
-    }
-
-    /**
-     * Méthode utilitaire pour extraire le JWT du cookie "accessToken"
-     */
-    private String recupererJwtDepuisCookie(HttpServletRequest request) {
+        // Sinon, chercher dans les cookies
         if (request.getCookies() != null) {
             for (Cookie cookie : request.getCookies()) {
                 if ("accessToken".equals(cookie.getName())) {
