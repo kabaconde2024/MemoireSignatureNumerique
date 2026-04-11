@@ -2,7 +2,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import { Document, Page, pdfjs } from 'react-pdf';
 import { Box, Button, Typography, Paper, CircularProgress, Stack, Zoom, Alert } from '@mui/material';
 import { CloudUpload, Download, HistoryEdu, CheckCircleOutline, PictureAsPdf, Warning } from '@mui/icons-material';
-import API from '../services/api';
+import API from '../../services/api';
 
 // Configuration du worker
 pdfjs.GlobalWorkerOptions.workerSrc = `//unpkg.com/pdfjs-dist@${pdfjs.version}/build/pdf.worker.min.mjs`;
