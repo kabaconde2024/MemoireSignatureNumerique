@@ -19,7 +19,10 @@ import java.util.Map;
 
 @RestController
 @RequestMapping("/api/signature")
-@CrossOrigin(origins = "*")
+@CrossOrigin(origins = {
+    "http://localhost:3000", 
+    "https://memoire-frontend.onrender.com"
+}, allowCredentials = "true")
 public class SignatureSimpleControleur {
 
     @Autowired
