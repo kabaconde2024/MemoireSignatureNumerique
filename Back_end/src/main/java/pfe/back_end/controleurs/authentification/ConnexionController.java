@@ -19,7 +19,7 @@ import pfe.back_end.repositories.sql.UtilisateurRepository;
 import pfe.back_end.services.audit.ServiceAudit;
 import pfe.back_end.services.authentification.ActivationCompte;
 import pfe.back_end.services.authentification.Connexion;
-
+import pfe.back_end.dto.ReponseAuthentification;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
