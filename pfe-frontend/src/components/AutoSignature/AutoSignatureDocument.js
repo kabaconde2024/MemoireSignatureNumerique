@@ -75,6 +75,7 @@ const AutoSignatureDocument = ({ setSnackbar }) => {
 const handleAutoSign = async () => {
     if (!file) return;
 
+    // 1. Vérification de la signature enregistrée (sécurité locale)
     if (!hasSignature) {
         setSnackbar({
             open: true,
@@ -84,46 +85,57 @@ const handleAutoSign = async () => {
         return;
     }
 
+    // 2. Récupération du token pour authentifier la requête sur Render
+    const token = localStorage.getItem('token');
+    if (!token) {
+        setSnackbar({
+            open: true,
+            message: "❌ Session expirée, veuillez vous reconnecter.",
+            severity: 'error'
+        });
+        return;
+    }
+
     setLoading(true);
     try {
-        // 1. Récupération du token
-        const token = localStorage.getItem('token');
-
         const formData = new FormData();
         formData.append('file', file);
 
-        // 2. Upload du document 
-        // 💡 NOTE : On retire 'Content-Type': 'multipart/form-data' 
-        // pour laisser le navigateur injecter le "boundary" requis par le serveur.
+        // ÉTAPE 1 : Upload du document
+        // On envoie le token dans le Header pour éviter le blocage des cookies tiers
         const uploadRes = await axios.post(`${API_BASE_URL}/documents/upload`, formData, {
+            withCredentials: true,
             headers: {
                 'Authorization': `Bearer ${token}`
-            },
-            withCredentials: true
+            }
         });
 
-        // 3. Application de la signature automatique
+        const documentId = uploadRes.data.id;
+
+        // ÉTAPE 2 : Application de la signature
+        // On utilise les coordonnées capturées sur l'interface
         const response = await axios.post(`${API_BASE_URL}/signature/appliquer-auto-signature`, null, {
             params: {
-                documentId: uploadRes.data.id,
+                documentId: documentId,
                 x: coords.x,
                 y: coords.y,
                 pageNumber: coords.page,
-                displayWidth: 800,
+                displayWidth: 800, // Largeur fixe utilisée dans le composant Document
                 displayHeight: coords.displayPageHeight
             },
+            responseType: 'blob', // Important pour recevoir le PDF binaire
+            withCredentials: true,
             headers: {
                 'Authorization': `Bearer ${token}`
-            },
-            responseType: 'blob',
-            withCredentials: true
+            }
         });
 
-        // 4. Création de l'URL pour la prévisualisation/téléchargement
+        // ÉTAPE 3 : Traitement du fichier signé
         const blob = new Blob([response.data], { type: 'application/pdf' });
         const url = URL.createObjectURL(blob);
         
-        setSignedFileUrl(url);
+        setSignedFileUrl(url); // Affiche le PDF signé dans l'aperçu
+        
         setSnackbar({ 
             open: true, 
             message: "✅ Document signé avec succès !", 
@@ -131,28 +143,22 @@ const handleAutoSign = async () => {
         });
 
     } catch (err) {
-        console.error("Erreur signature:", err);
+        console.error("Erreur lors du processus de signature:", err);
         
-        // Gestion précise des messages d'erreur selon le status
-        let errorMsg = "Erreur lors de la signature";
-        
-        if (err.response) {
-            if (err.response.status === 403) {
-                errorMsg = "Accès refusé (403). Vérifiez votre connexion ou les permissions du serveur.";
-            } else if (err.response.data instanceof Blob) {
-                // Si la réponse est un Blob (erreur venant d'un endpoint responseType: 'blob')
-                errorMsg = "Le serveur a rencontré une erreur lors de la génération du PDF.";
-            } else {
-                errorMsg = err.response.data?.erreur || errorMsg;
-            }
+        let messageErreur = "Erreur lors de la signature.";
+        if (err.response && err.response.status === 403) {
+            messageErreur = "Session invalide ou droits insuffisants (403).";
         }
 
-        setSnackbar({ open: true, message: errorMsg, severity: 'error' });
+        setSnackbar({ 
+            open: true, 
+            message: `❌ ${messageErreur}`, 
+            severity: 'error' 
+        });
     } finally {
         setLoading(false);
     }
 };
-
     // Affichage du message si pas de signature
     if (!checkingSignature && !hasSignature) {
         return (
