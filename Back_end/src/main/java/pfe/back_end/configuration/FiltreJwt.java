@@ -15,6 +15,7 @@ import org.springframework.web.filter.OncePerRequestFilter;
 
 import java.io.IOException;
 import java.util.Collections;
+import java.util.List;
 
 @Component
 public class FiltreJwt extends OncePerRequestFilter {
@@ -26,62 +27,92 @@ public class FiltreJwt extends OncePerRequestFilter {
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain filterChain)
             throws ServletException, IOException {
 
-        // Log uniquement en développement ou pour debug
-        boolean isDebug = request.getHeader("X-Debug-Mode") != null;
         String uri = request.getRequestURI();
         
-        // Ne log que les endpoints sensibles ou en debug
-        if (isDebug || uri.contains("/documents/upload") || uri.contains("/signature/")) {
-            System.out.println("🔍 [FiltreJWT] URL: " + uri);
+        // Log pour les endpoints d'upload
+        if (uri.contains("/documents/upload") || uri.contains("/signature/")) {
+            System.out.println("========================================");
+            System.out.println("🔍 [FiltreJWT] Traitement de: " + uri);
+            System.out.println("🔍 [FiltreJWT] Method: " + request.getMethod());
         }
 
         try {
             String token = recupererToken(request);
             
-            if (isDebug && token != null) {
-                System.out.println("🔍 [FiltreJWT] Token trouvé, longueur: " + token.length());
+            if (uri.contains("/documents/upload") || uri.contains("/signature/")) {
+                System.out.println("🔑 Token présent: " + (token != null ? "OUI" : "NON"));
+                if (token != null) {
+                    System.out.println("🔑 Token (début): " + token.substring(0, Math.min(50, token.length())) + "...");
+                }
             }
 
-            if (token != null && jwtUtils.validateToken(token)) {
-                String email = jwtUtils.getEmailFromToken(token);
-                String role = jwtUtils.getRoleFromToken(token);
+            if (token != null) {
+                boolean isValid = jwtUtils.validateToken(token);
+                
+                if (uri.contains("/documents/upload") || uri.contains("/signature/")) {
+                    System.out.println("✅ Token valide: " + isValid);
+                }
+                
+                if (isValid) {
+                    String email = jwtUtils.getEmailFromToken(token);
+                    String role = jwtUtils.getRoleFromToken(token);
+                    
+                    if (uri.contains("/documents/upload") || uri.contains("/signature/")) {
+                        System.out.println("📧 Email extrait: " + email);
+                        System.out.println("🎭 Rôle extrait: '" + role + "'");
+                    }
 
-                if (email != null && SecurityContextHolder.getContext().getAuthentication() == null) {
-                    SimpleGrantedAuthority authority = new SimpleGrantedAuthority(role);
-                    
-                    UsernamePasswordAuthenticationToken authentication = new UsernamePasswordAuthenticationToken(
-                            email, null, Collections.singletonList(authority)
-                    );
-                    
-                    authentication.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
-                    SecurityContextHolder.getContext().setAuthentication(authentication);
-                    
-                    if (isDebug) {
-                        System.out.println("✅ [FiltreJWT] Utilisateur authentifié: " + email + " (rôle: " + role + ")");
+                    if (email != null && SecurityContextHolder.getContext().getAuthentication() == null) {
+                        // Créer l'autorité avec le rôle
+                        SimpleGrantedAuthority authority = new SimpleGrantedAuthority(role);
+                        
+                        UsernamePasswordAuthenticationToken authentication = new UsernamePasswordAuthenticationToken(
+                                email, null, Collections.singletonList(authority)
+                        );
+                        
+                        authentication.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
+                        SecurityContextHolder.getContext().setAuthentication(authentication);
+                        
+                        if (uri.contains("/documents/upload") || uri.contains("/signature/")) {
+                            System.out.println("✅ Authentification set pour: " + email);
+                            System.out.println("✅ Authorities: " + authentication.getAuthorities());
+                        }
                     }
                 }
-            } else if (isDebug) {
-                System.out.println("❌ [FiltreJWT] Authentification échouée pour: " + uri);
+            } else if (uri.contains("/documents/upload") || uri.contains("/signature/")) {
+                System.out.println("❌ Aucun token trouvé dans la requête");
+                // Afficher tous les headers pour debug
+                System.out.println("📋 Headers reçus:");
+                java.util.Collections.list(request.getHeaderNames()).forEach(header -> 
+                    System.out.println("   " + header + ": " + request.getHeader(header))
+                );
             }
+            
+            if (uri.contains("/documents/upload") || uri.contains("/signature/")) {
+                System.out.println("========================================\n");
+            }
+
         } catch (Exception e) {
             System.err.println("❌ [FiltreJWT] Erreur: " + e.getMessage());
-            if (isDebug) e.printStackTrace();
+            e.printStackTrace();
         }
 
         filterChain.doFilter(request, response);
     }
 
     private String recupererToken(HttpServletRequest request) {
-        // Priorité au Header Authorization
+        // 1. Vérifier le Header Authorization
         String authHeader = request.getHeader("Authorization");
         if (authHeader != null && authHeader.startsWith("Bearer ")) {
+            System.out.println("🔑 Token trouvé dans Authorization header");
             return authHeader.substring(7);
         }
 
-        // Sinon, chercher dans les cookies
+        // 2. Vérifier les cookies
         if (request.getCookies() != null) {
             for (Cookie cookie : request.getCookies()) {
                 if ("accessToken".equals(cookie.getName())) {
+                    System.out.println("🍪 Token trouvé dans cookie accessToken");
                     return cookie.getValue();
                 }
             }

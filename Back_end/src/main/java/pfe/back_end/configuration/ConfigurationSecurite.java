@@ -49,7 +49,9 @@ public class ConfigurationSecurite {
                                 "/api/finaliser-activation",
                                 "/api/mot-de-passe-oublie",
                                 "/api/reinitialiser-mot-de-passe",
-                                "/api/horodatage/statut"
+                                "/api/horodatage/statut",
+                                "/api/auth/check",
+                                "/api/debug/**"
                         ).permitAll()
 
                         // --- ROUTES PUBLIQUES POUR SIGNATAIRES EXTERNES (Sans compte) ---
@@ -66,8 +68,17 @@ public class ConfigurationSecurite {
                         .requestMatchers("/api/entreprise/**").hasAuthority("ADMIN_ENTREPRISE")
                         .requestMatchers("/api/super-admin/**").hasAuthority("SUPER_ADMIN")
                         
-                        // --- TOUT LE RESTE (Y compris Upload et Auto-Signature) ---
-                        // Nécessite d'être connecté pour que l'objet Authentication ne soit pas null
+                        // ✅ CORRECTION CRUCIALE : Routes d'upload et signature
+                        // Autoriser tous les utilisateurs authentifiés (quel que soit leur rôle)
+                        .requestMatchers(
+                                "/api/documents/upload",
+                                "/api/signature/appliquer-auto-signature",
+                                "/api/signature/**",
+                                "/api/documents/**"
+                        ).authenticated()
+                        
+                        // --- TOUT LE RESTE ---
+                        // Nécessite d'être connecté
                         .anyRequest().authenticated()
                 )
                 // Injection du filtre JWT avant le filtre de username/password
@@ -96,7 +107,8 @@ public class ConfigurationSecurite {
                 "Accept", 
                 "X-Requested-With", 
                 "Cache-Control",
-                "Cookie"
+                "Cookie",
+                "X-Debug-Mode"
         ));
         
         // IMPORTANT : Autoriser l'envoi des cookies (withCredentials: true côté React)
