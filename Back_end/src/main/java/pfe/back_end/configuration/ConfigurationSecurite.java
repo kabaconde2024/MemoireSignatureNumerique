@@ -51,15 +51,17 @@ public class ConfigurationSecurite {
                                 "/api/reinitialiser-mot-de-passe"
                         ).permitAll()
 
-                        // --- ROUTES SIGNATURE & INVITATIONS (PUBLIQUES) ---
+                        // --- ROUTES SIGNATURE, DOCUMENTS & INVITATIONS (PUBLIQUES) ---
                         .requestMatchers(
                                 "/api/signature/details/**",
                                 "/api/signature/apercu/**",
                                 "/api/signature/send-otp",
                                 "/api/signature/valider-simple",
+                                "/api/signature/pki/executer",      // ✅ Ajouté pour la signature PKI
                                 "/api/invitations/verifier/**",
                                 "/api/horodatage/statut",
-                                "/api/horodatage/tester"
+                                "/api/horodatage/tester",
+                                "/api/documents/upload"             // ✅ CORRECTION : Ajout de la route d'upload
                         ).permitAll()
 
                         // --- ROUTES PRIVÉES (Rôles & Admin) ---
