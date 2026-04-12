@@ -20,19 +20,20 @@ public class InscriptionSuperAdmin {
 
     private static final Logger logger = LoggerFactory.getLogger(InscriptionSuperAdmin.class);
 
-    @Value("${app.superadmin.email:admin@example.com}")
+    // ✅ CORRECTION : Utilisation des noms exacts des variables d'environnement définies sur Render
+    @Value("${SUPERADMIN_EMAIL:admin@example.com}")
     private String emailSuperAdmin;
 
-    @Value("${app.superadmin.password:}")
+    @Value("${SUPERADMIN_PASSWORD:}")
     private String motDePasseSuperAdmin;
 
-    @Value("${app.superadmin.nom:Admin}")
+    @Value("${SUPERADMIN_NOM:Admin}")
     private String nomSuperAdmin;
 
-    @Value("${app.superadmin.prenom:Super}")
+    @Value("${SUPERADMIN_PRENOM:Super}")
     private String prenomSuperAdmin;
 
-    @Value("${app.superadmin.telephone:+1234567890}")
+    @Value("${SUPERADMIN_TELEPHONE:+21600000000}")
     private String telephoneSuperAdmin;
 
     @Bean
@@ -44,16 +45,16 @@ public class InscriptionSuperAdmin {
         return args -> {
             logger.info("🔍 Vérification de l'existence du super admin...");
 
-            // Vérifier si le mot de passe est configuré
+            // 1. Sécurité : Vérifier si le mot de passe est bien injecté
             if (motDePasseSuperAdmin == null || motDePasseSuperAdmin.isEmpty()) {
-                logger.warn("⚠️ ATTENTION: Le mot de passe du super admin n'est pas configuré!");
-                logger.warn("   Veuillez définir la variable d'environnement: SUPERADMIN_PASSWORD");
-                logger.warn("   Ou ajouter dans application.properties: app.superadmin.password=votre_mot_de_passe");
-                return;
+                logger.error("❌ ERREUR CRITIQUE: Le mot de passe du super admin est vide !");
+                logger.error("Vérifiez la variable d'environnement 'SUPERADMIN_PASSWORD' sur Render.");
+                return; // On arrête pour ne pas créer un compte sans mot de passe
             }
 
+            // 2. Vérification par email (Ignorer la casse pour plus de sécurité)
             if (!utilisateurRepository.existsByEmail(emailSuperAdmin)) {
-                logger.info("📝 Création du super admin avec email: {}", emailSuperAdmin);
+                logger.info("📝 Création du compte SuperAdmin : {}", emailSuperAdmin);
 
                 Utilisateur superAdmin = Utilisateur.builder()
                         .email(emailSuperAdmin)
@@ -64,53 +65,37 @@ public class InscriptionSuperAdmin {
                         .role(Role.SUPER_ADMIN)
                         .statutCycleVie("ACTIF")
                         .mfaActive(false)
-                        .tokenActivation(null)
                         .hsmAlias("SUPER_ADMIN_" + UUID.randomUUID().toString().substring(0, 8).toUpperCase())
                         .build();
 
                 utilisateurRepository.save(superAdmin);
-                logger.info("✅ Super admin créé avec succès!");
+                logger.info("✅ Super admin créé avec succès dans la base PostgreSQL.");
 
             } else {
-                logger.info("✅ Super admin existe déjà avec l'email: {}", emailSuperAdmin);
+                logger.info("ℹ️ L'utilisateur {} existe déjà. Vérification des droits...", emailSuperAdmin);
 
-                // Vérification supplémentaire : s'assurer que le rôle est bien SUPER_ADMIN
-                Utilisateur adminExistant = utilisateurRepository.findByEmail(emailSuperAdmin).orElse(null);
-                if (adminExistant != null) {
-                    if (adminExistant.getRole() != Role.SUPER_ADMIN) {
-                        adminExistant.setRole(Role.SUPER_ADMIN);
-                        utilisateurRepository.save(adminExistant);
-                        logger.info("🔄 Rôle corrigé à SUPER_ADMIN pour l'utilisateur existant");
+                // 3. Mise à jour préventive des droits si l'utilisateur existe déjà
+                utilisateurRepository.findByEmail(emailSuperAdmin).ifPresent(admin -> {
+                    boolean modifie = false;
+                    
+                    if (admin.getRole() != Role.SUPER_ADMIN) {
+                        admin.setRole(Role.SUPER_ADMIN);
+                        modifie = true;
+                    }
+                    if (!"ACTIF".equals(admin.getStatutCycleVie())) {
+                        admin.setStatutCycleVie("ACTIF");
+                        modifie = true;
                     }
 
-                    if (!"ACTIF".equals(adminExistant.getStatutCycleVie())) {
-                        adminExistant.setStatutCycleVie("ACTIF");
-                        utilisateurRepository.save(adminExistant);
-                        logger.info("🔄 Statut corrigé à ACTIF pour le super admin");
+                    if (modifie) {
+                        utilisateurRepository.save(admin);
+                        logger.info("🔄 Rôle et statut mis à jour pour le SuperAdmin.");
                     }
-
-                    logger.info("📊 Super admin: {} {}, Email: {}, Rôle: {}",
-                            adminExistant.getPrenom(), adminExistant.getNom(),
-                            adminExistant.getEmail(), adminExistant.getRole());
-                }
+                });
             }
 
-            long nombreSuperAdmins = utilisateurRepository.countByRole(Role.SUPER_ADMIN);
-            logger.info("📊 Nombre total de super admins dans la base: {}", nombreSuperAdmins);
-
-            if (nombreSuperAdmins > 1) {
-                logger.warn("⚠️ ATTENTION: Il y a {} super admins dans la base !", nombreSuperAdmins);
-
-                // Optionnel : lister tous les super admins
-                List<Utilisateur> listeSuperAdmins = utilisateurRepository.findByRole(Role.SUPER_ADMIN);
-                for (Utilisateur admin : listeSuperAdmins) {
-                    logger.warn("   - {} {} ({})", admin.getPrenom(), admin.getNom(), admin.getEmail());
-                }
-            }
+            long totalAdmins = utilisateurRepository.countByRole(Role.SUPER_ADMIN);
+            logger.info("📊 Nombre total de SUPER_ADMIN en base : {}", totalAdmins);
         };
-    }
-
-    private String alignerGauche(String texte, int longueur) {
-        return String.format("%-" + longueur + "s", texte);
     }
 }
