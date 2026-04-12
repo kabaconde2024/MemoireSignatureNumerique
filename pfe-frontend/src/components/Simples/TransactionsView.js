@@ -3,20 +3,22 @@ import axios from 'axios';
 import { 
   Box, Typography, Table, TableBody, TableCell, TableContainer, 
   TableHead, TableRow, Paper, Chip, Stack, IconButton, Tooltip,
-  Dialog
+  Dialog, Button
 } from '@mui/material';
 import Description from '@mui/icons-material/Description';
 import PhoneIcon from '@mui/icons-material/Phone';
 import DownloadIcon from '@mui/icons-material/GetApp';
 import VerifiedUserIcon from '@mui/icons-material/VerifiedUser';
+import SimpleIcon from '@mui/icons-material/EditNote';
+import PkiIcon from '@mui/icons-material/Security';
 
 import VerificationReport from './VerificationReport';
-
 
 const TransactionsView = ({ invitations, loading }) => {
   
   const [openReportDialog, setOpenReportDialog] = useState(false);
   const [currentVerificationResult, setCurrentVerificationResult] = useState(null);
+  const [downloading, setDownloading] = useState({});
 
   const formatDate = (dateValue) => {
     if (!dateValue) return '—';
@@ -46,9 +48,15 @@ const TransactionsView = ({ invitations, loading }) => {
     }
   };
 
-  const handleDownload = async (documentId, nomFichier) => {
+  const handleDownload = async (documentId, nomFichier, typeSignature) => {
+    setDownloading(prev => ({ ...prev, [documentId]: true }));
     try {
-      const response = await axios.get(`https://memoiresignaturenumerique.onrender.com/api/documents/download-signe/${documentId}`, {
+      // Utiliser le bon endpoint selon le type de signature
+      const endpoint = typeSignature === 'pki' 
+        ? `https://memoiresignaturenumerique.onrender.com/api/documents/download-signe-pki/${documentId}`
+        : `https://memoiresignaturenumerique.onrender.com/api/documents/download-signe/${documentId}`;
+      
+      const response = await axios.get(endpoint, {
         responseType: 'blob',
         withCredentials: true
       });
@@ -56,22 +64,25 @@ const TransactionsView = ({ invitations, loading }) => {
       const url = window.URL.createObjectURL(new Blob([response.data]));
       const link = document.createElement('a');
       link.href = url;
-      link.setAttribute('download', nomFichier || 'document_signe.pdf');
+      const prefix = typeSignature === 'pki' ? 'SIGNE_PKI_' : 'SIGNE_';
+      link.setAttribute('download', `${prefix}${nomFichier || 'document.pdf'}`);
       document.body.appendChild(link);
       link.click();
       link.remove();
       window.URL.revokeObjectURL(url);
     } catch (error) {
       console.error("Erreur lors du téléchargement", error);
-      alert("Erreur : Impossible de contacter le serveur sécurisé sur le port 8443.");
+      alert("Erreur : Impossible de télécharger le document signé.");
+    } finally {
+      setDownloading(prev => ({ ...prev, [documentId]: false }));
     }
   };
 
-  const verifierSignature = async (documentId, nomFichier) => {
+  const verifierSignature = async (documentId, nomFichier, typeSignature) => {
     try {
       const response = await axios.post(
         'https://memoiresignaturenumerique.onrender.com/api/signature/verifier-document-signe',
-        { documentId: documentId },
+        { documentId: documentId, typeSignature: typeSignature },
         { withCredentials: true }
       );
       
@@ -82,6 +93,16 @@ const TransactionsView = ({ invitations, loading }) => {
       console.error("Erreur vérification:", error);
       alert("Erreur lors de la vérification: " + (error.response?.data?.erreur || error.message));
     }
+  };
+
+  // Fonction pour obtenir le libellé du type de signature
+  const getSignatureTypeLabel = (type) => {
+    if (!type) return null;
+    const typeLower = type.toLowerCase();
+    if (typeLower === 'pki' || typeLower === 'pkcs11') {
+      return { label: 'PKI', icon: <PkiIcon sx={{ fontSize: 14 }} />, color: 'success' };
+    }
+    return { label: 'Simple', icon: <SimpleIcon sx={{ fontSize: 14 }} />, color: 'primary' };
   };
 
   return (
@@ -95,11 +116,11 @@ const TransactionsView = ({ invitations, loading }) => {
           <TableHead sx={{ bgcolor: '#f8f9fa' }}>
             <TableRow>
               <TableCell><b>DOCUMENT</b></TableCell>
-              <TableCell><b>SIGNATAIRE</b></TableCell>
+              <TableCell><b>SIGNATAIRE / TYPE</b></TableCell>
               <TableCell><b>CONTACT</b></TableCell>
               <TableCell><b>DATE INVITATION</b></TableCell>
               <TableCell><b>DATE SIGNATURE</b></TableCell>
-              <TableCell align="center"><b>STATUT / ACTION</b></TableCell>
+              <TableCell align="center"><b>STATUT / ACTIONS</b></TableCell>
             </TableRow>
           </TableHead>
           <TableBody>
@@ -118,11 +139,12 @@ const TransactionsView = ({ invitations, loading }) => {
                 
                 const dateInvitation = t.date_invitation || t.dateInvitation;
                 const dateSignature = t.date_signature || t.dateSignature;
-                const typeSignature = t.type_signature || t.typeSignature;
-
+                const typeSignature = t.type_signature || t.typeSignature || (t.isPki ? 'pki' : 'simple');
+                
                 const statutBrut = t.statut || "";
                 const estSigne = statutBrut === "SIGNE" || !!dateSignature;
-                const isPkiSignature = typeSignature === 'pki';
+                const signatureType = getSignatureTypeLabel(typeSignature);
+                const isDownloading = downloading[docId];
 
                 return (
                   <TableRow key={t.id || index} hover>
@@ -135,13 +157,14 @@ const TransactionsView = ({ invitations, loading }) => {
 
                     <TableCell>
                       <Typography variant="body2">{`${prenom} ${nom}`.trim() || "Inconnu"}</Typography>
-                      {isPkiSignature && (
+                      {signatureType && (
                         <Chip 
-                          label="PKI" 
+                          icon={signatureType.icon}
+                          label={signatureType.label} 
                           size="small" 
-                          color="success" 
+                          color={signatureType.color} 
                           variant="outlined"
-                          sx={{ mt: 0.5, height: 18, fontSize: '0.6rem' }}
+                          sx={{ mt: 0.5, height: 22, fontSize: '0.7rem' }}
                         />
                       )}
                     </TableCell>
@@ -185,23 +208,36 @@ const TransactionsView = ({ invitations, loading }) => {
                         />
                         {estSigne && docId && (
                           <>
-                            <Tooltip title="Télécharger le document signé">
+                            <Tooltip title={`Télécharger le document signé (${signatureType?.label || 'Simple'})`}>
                               <IconButton 
                                 size="small" 
                                 color="primary" 
-                                onClick={() => handleDownload(docId, docNom)}
+                                onClick={() => handleDownload(docId, docNom, typeSignature)}
+                                disabled={isDownloading}
                               >
                                 <DownloadIcon fontSize="small" />
                               </IconButton>
                             </Tooltip>
-                            {isPkiSignature && (
-                              <Tooltip title="Vérifier la signature numérique">
+                            
+                            {/* Bouton de vérification différent selon le type */}
+                            {signatureType?.label === 'PKI' ? (
+                              <Tooltip title="Vérifier la signature numérique PKI">
                                 <IconButton 
                                   size="small" 
                                   color="success" 
-                                  onClick={() => verifierSignature(docId, docNom)}
+                                  onClick={() => verifierSignature(docId, docNom, typeSignature)}
                                 >
                                   <VerifiedUserIcon fontSize="small" />
+                                </IconButton>
+                              </Tooltip>
+                            ) : (
+                              <Tooltip title="Document signé électroniquement (Simple)">
+                                <IconButton 
+                                  size="small" 
+                                  color="info" 
+                                  onClick={() => verifierSignature(docId, docNom, typeSignature)}
+                                >
+                                  <SimpleIcon fontSize="small" />
                                 </IconButton>
                               </Tooltip>
                             )}
@@ -216,6 +252,48 @@ const TransactionsView = ({ invitations, loading }) => {
           </TableBody>
         </Table>
       </TableContainer>
+
+      {/* Légende des types de signature */}
+      <Paper 
+        elevation={0} 
+        sx={{ 
+          mt: 3, 
+          p: 2, 
+          bgcolor: '#f8f9fa', 
+          borderRadius: '12px',
+          border: '1px solid #E2E8F0'
+        }}
+      >
+        <Stack direction="row" spacing={3} alignItems="center">
+          <Typography variant="caption" sx={{ fontWeight: 600, color: '#0b1e39' }}>
+            Types de signature :
+          </Typography>
+          <Stack direction="row" spacing={1} alignItems="center">
+            <Chip 
+              icon={<SimpleIcon sx={{ fontSize: 14 }} />}
+              label="Signature Simple" 
+              size="small" 
+              color="primary" 
+              variant="outlined"
+            />
+            <Typography variant="caption" color="textSecondary">
+              Signature électronique simple avec OTP
+            </Typography>
+          </Stack>
+          <Stack direction="row" spacing={1} alignItems="center">
+            <Chip 
+              icon={<PkiIcon sx={{ fontSize: 14 }} />}
+              label="Signature PKI" 
+              size="small" 
+              color="success" 
+              variant="outlined"
+            />
+            <Typography variant="caption" color="textSecondary">
+              Signature avec certificat numérique (qualifiée)
+            </Typography>
+          </Stack>
+        </Stack>
+      </Paper>
 
       {/* Dialog pour le rapport de vérification */}
       <Dialog 
