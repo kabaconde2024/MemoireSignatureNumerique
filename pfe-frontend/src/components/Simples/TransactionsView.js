@@ -1,9 +1,9 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import { 
   Box, Typography, Table, TableBody, TableCell, TableContainer, 
   TableHead, TableRow, Paper, Chip, Stack, IconButton, Tooltip,
-  Dialog, Button
+  Dialog
 } from '@mui/material';
 import Description from '@mui/icons-material/Description';
 import PhoneIcon from '@mui/icons-material/Phone';
@@ -19,6 +19,21 @@ const TransactionsView = ({ invitations, loading }) => {
   const [openReportDialog, setOpenReportDialog] = useState(false);
   const [currentVerificationResult, setCurrentVerificationResult] = useState(null);
   const [downloading, setDownloading] = useState({});
+
+  // Debug: Afficher les données reçues
+  useEffect(() => {
+    if (invitations && invitations.length > 0) {
+      console.log("=== INVITATIONS REÇUES ===");
+      invitations.forEach((inv, idx) => {
+        console.log(`Invitation ${idx}:`, {
+          id: inv.id,
+          type_signature: inv.type_signature,
+          typeSignature: inv.typeSignature,
+          statut: inv.statut
+        });
+      });
+    }
+  }, [invitations]);
 
   const formatDate = (dateValue) => {
     if (!dateValue) return '—';
@@ -94,17 +109,23 @@ const TransactionsView = ({ invitations, loading }) => {
     }
   };
 
-  // ✅ Fonction corrigée pour récupérer le type de signature
+  // ✅ Fonction pour récupérer le type de signature (supporte plusieurs formats)
   const getSignatureType = (invitation) => {
-    // Vérifier tous les champs possibles
-    const type = invitation.type_signature || 
-                 invitation.typeSignature || 
-                 invitation.type || 
-                 'simple';
+    // Essayer différents noms de champs possibles
+    let type = invitation.type_signature || 
+               invitation.typeSignature || 
+               invitation.type;
     
-    console.log("Type détecté:", type, "pour invitation:", invitation.id);
+    // Si le type n'est pas défini, essayer de le déduire
+    if (!type) {
+      // Par défaut, considérer comme 'simple' si ce n'est pas PKI
+      type = 'simple';
+    }
     
-    if (type === 'pki' || type === 'PKI' || type === 'pkcs11') {
+    const typeLower = String(type).toLowerCase();
+    console.log(`Type détecté: ${typeLower} pour invitation ${invitation.id || invitation.documentId}`);
+    
+    if (typeLower === 'pki' || typeLower === 'pkcs11') {
       return { label: 'PKI', icon: <PkiIcon sx={{ fontSize: 14 }} />, color: 'success', value: 'pki' };
     }
     return { label: 'Simple', icon: <SimpleIcon sx={{ fontSize: 14 }} />, color: 'primary', value: 'simple' };
@@ -135,25 +156,22 @@ const TransactionsView = ({ invitations, loading }) => {
               <TableRow><TableCell colSpan={6} align="center">Aucune transaction trouvée.</TableCell></TableRow>
             ) : (
               invitations.map((t, index) => {
+                // Récupération des données avec fallbacks
                 const nom = t.nom_signataire || t.nomSignataire || "";
                 const prenom = t.prenom_signataire || t.prenomSignataire || "";
                 const email = t.email_destinataire || t.emailDestinataire || "N/A";
                 const telephone = t.telephone_signataire || t.telephoneSignataire || "N/A";
                 const docNom = t.document_nom || t.documentNom || t.nomFichier || "Document PDF";
                 const docId = t.document_id || t.documentId;
-                
                 const dateInvitation = t.date_invitation || t.dateInvitation;
                 const dateSignature = t.date_signature || t.dateSignature;
-                
-                // ✅ Récupération corrigée du type de signature
-                const signatureType = getSignatureType(t);
-                const typeValue = signatureType.value;
-                
                 const statutBrut = t.statut || "";
                 const estSigne = statutBrut === "SIGNE" || !!dateSignature;
                 const isDownloading = downloading[docId];
-
-                console.log(`Transaction ${index}: type=${typeValue}, statut=${statutBrut}`);
+                
+                // ✅ Récupération du type de signature
+                const signatureType = getSignatureType(t);
+                const typeValue = signatureType.value;
 
                 return (
                   <TableRow key={t.id || index} hover>
@@ -226,7 +244,7 @@ const TransactionsView = ({ invitations, loading }) => {
                               </IconButton>
                             </Tooltip>
                             
-                            {/* Bouton de vérification différent selon le type */}
+                            {/* Bouton de vérification selon le type */}
                             {typeValue === 'pki' ? (
                               <Tooltip title="Vérifier la signature numérique PKI">
                                 <IconButton 
@@ -271,7 +289,7 @@ const TransactionsView = ({ invitations, loading }) => {
           border: '1px solid #E2E8F0'
         }}
       >
-        <Stack direction="row" spacing={3} alignItems="center">
+        <Stack direction="row" spacing={3} alignItems="center" flexWrap="wrap">
           <Typography variant="caption" sx={{ fontWeight: 600, color: '#0b1e39' }}>
             Types de signature :
           </Typography>

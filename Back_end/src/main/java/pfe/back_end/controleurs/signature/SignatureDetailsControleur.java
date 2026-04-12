@@ -10,7 +10,11 @@ import java.util.Map;
 
 @RestController
 @RequestMapping("/api/signature")
-@CrossOrigin(origins = "*")
+@CrossOrigin(origins = {
+    "http://localhost:3000",
+    "https://localhost:3000", 
+    "https://memoire-frontend.onrender.com"
+}, allowCredentials = "true")
 public class SignatureDetailsControleur {
 
     @Autowired private InvitationRepository invitationRepository;
@@ -26,10 +30,14 @@ public class SignatureDetailsControleur {
                     response.put("emailDestinataire", inv.getEmailDestinataire());
                     response.put("telephone", inv.getTelephoneSignataire());
                     response.put("statut", inv.getStatut());
-                    response.put("typeSignature", inv.getTypeSignature());
+                    response.put("typeSignature", inv.getTypeSignature()); // ✅ Déjà présent
                     response.put("coordonneeX", inv.getCoordonneeX());
                     response.put("coordonneeY", inv.getCoordonneeY());
                     response.put("pageNumber", inv.getPageNumber());
+                    response.put("dateInvitation", inv.getDateInvitation());  // ✅ Ajouté
+                    response.put("dateSignature", inv.getDateSignature());    // ✅ Ajouté
+                    response.put("documentId", inv.getDocument().getId());    // ✅ Ajouté
+                    response.put("documentNom", inv.getDocument().getNomFichier()); // ✅ Ajouté
                     return ResponseEntity.ok(response);
                 })
                 .orElse(ResponseEntity.notFound().build());
