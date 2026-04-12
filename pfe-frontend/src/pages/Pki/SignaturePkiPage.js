@@ -167,22 +167,20 @@ const SignaturePkiPage = () => {
         setShowPositionSelector(false);
     };
 
-// 4. Envoi du code OTP
-const handleSendOtp = async () => {
-    if (!invitation?.telephoneSignataire) {
-        alert("Numéro de téléphone non trouvé pour l'envoi du code SMS");
+    // 4. Envoi du code OTP
+    const handleSendOtp = async () => {
+    if (!invitation?.emailDestinataire) { // Vérifie l'email au lieu du téléphone
+        alert("Adresse email non trouvée");
         return;
     }
     
     try {
         setLoading(true);
-        // ✅ Envoi du token pour récupérer le numéro de téléphone
         await axios.post(`https://memoiresignaturenumerique.onrender.com/api/signature/send-otp?token=${token}`);
         setIsOtpSent(true);
-        alert(`✅ Code de sécurité envoyé au : ${invitation.telephoneSignataire}`);
+        alert(`✅ Code de sécurité envoyé à : ${invitation.emailDestinataire}`);
     } catch (err) {
-        console.error("Erreur envoi OTP:", err);
-        alert("❌ Erreur lors de l'envoi du code SMS. Vérifiez votre numéro de téléphone.");
+        alert("❌ Erreur lors de l'envoi de l'email.");
     } finally {
         setLoading(false);
     }
