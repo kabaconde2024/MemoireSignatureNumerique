@@ -224,6 +224,7 @@ public class ControleurDocument {
                 map.put("nomSignataire", inv.getNomSignataire());
                 map.put("emailDestinataire", inv.getEmailDestinataire());
                 map.put("dateInvitation", inv.getDateInvitation());
+                map.put("dateSignature", inv.getDateSignature());
                 map.put("statut", inv.getStatut());
                 return map;
             }).collect(Collectors.toList());
