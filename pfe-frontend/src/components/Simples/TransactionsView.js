@@ -51,7 +51,6 @@ const TransactionsView = ({ invitations, loading }) => {
   const handleDownload = async (documentId, nomFichier, typeSignature) => {
     setDownloading(prev => ({ ...prev, [documentId]: true }));
     try {
-      // Utiliser le bon endpoint selon le type de signature
       const endpoint = typeSignature === 'pki' 
         ? `https://memoiresignaturenumerique.onrender.com/api/documents/download-signe-pki/${documentId}`
         : `https://memoiresignaturenumerique.onrender.com/api/documents/download-signe/${documentId}`;
@@ -95,14 +94,20 @@ const TransactionsView = ({ invitations, loading }) => {
     }
   };
 
-  // Fonction pour obtenir le libellé du type de signature
-  const getSignatureTypeLabel = (type) => {
-    if (!type) return null;
-    const typeLower = type.toLowerCase();
-    if (typeLower === 'pki' || typeLower === 'pkcs11') {
-      return { label: 'PKI', icon: <PkiIcon sx={{ fontSize: 14 }} />, color: 'success' };
+  // ✅ Fonction corrigée pour récupérer le type de signature
+  const getSignatureType = (invitation) => {
+    // Vérifier tous les champs possibles
+    const type = invitation.type_signature || 
+                 invitation.typeSignature || 
+                 invitation.type || 
+                 'simple';
+    
+    console.log("Type détecté:", type, "pour invitation:", invitation.id);
+    
+    if (type === 'pki' || type === 'PKI' || type === 'pkcs11') {
+      return { label: 'PKI', icon: <PkiIcon sx={{ fontSize: 14 }} />, color: 'success', value: 'pki' };
     }
-    return { label: 'Simple', icon: <SimpleIcon sx={{ fontSize: 14 }} />, color: 'primary' };
+    return { label: 'Simple', icon: <SimpleIcon sx={{ fontSize: 14 }} />, color: 'primary', value: 'simple' };
   };
 
   return (
@@ -139,12 +144,16 @@ const TransactionsView = ({ invitations, loading }) => {
                 
                 const dateInvitation = t.date_invitation || t.dateInvitation;
                 const dateSignature = t.date_signature || t.dateSignature;
-                const typeSignature = t.type_signature || t.typeSignature || (t.isPki ? 'pki' : 'simple');
+                
+                // ✅ Récupération corrigée du type de signature
+                const signatureType = getSignatureType(t);
+                const typeValue = signatureType.value;
                 
                 const statutBrut = t.statut || "";
                 const estSigne = statutBrut === "SIGNE" || !!dateSignature;
-                const signatureType = getSignatureTypeLabel(typeSignature);
                 const isDownloading = downloading[docId];
+
+                console.log(`Transaction ${index}: type=${typeValue}, statut=${statutBrut}`);
 
                 return (
                   <TableRow key={t.id || index} hover>
@@ -157,16 +166,14 @@ const TransactionsView = ({ invitations, loading }) => {
 
                     <TableCell>
                       <Typography variant="body2">{`${prenom} ${nom}`.trim() || "Inconnu"}</Typography>
-                      {signatureType && (
-                        <Chip 
-                          icon={signatureType.icon}
-                          label={signatureType.label} 
-                          size="small" 
-                          color={signatureType.color} 
-                          variant="outlined"
-                          sx={{ mt: 0.5, height: 22, fontSize: '0.7rem' }}
-                        />
-                      )}
+                      <Chip 
+                        icon={signatureType.icon}
+                        label={signatureType.label} 
+                        size="small" 
+                        color={signatureType.color} 
+                        variant="outlined"
+                        sx={{ mt: 0.5, height: 22, fontSize: '0.7rem' }}
+                      />
                     </TableCell>
 
                     <TableCell>
@@ -208,11 +215,11 @@ const TransactionsView = ({ invitations, loading }) => {
                         />
                         {estSigne && docId && (
                           <>
-                            <Tooltip title={`Télécharger le document signé (${signatureType?.label || 'Simple'})`}>
+                            <Tooltip title={`Télécharger le document signé (${signatureType.label})`}>
                               <IconButton 
                                 size="small" 
                                 color="primary" 
-                                onClick={() => handleDownload(docId, docNom, typeSignature)}
+                                onClick={() => handleDownload(docId, docNom, typeValue)}
                                 disabled={isDownloading}
                               >
                                 <DownloadIcon fontSize="small" />
@@ -220,12 +227,12 @@ const TransactionsView = ({ invitations, loading }) => {
                             </Tooltip>
                             
                             {/* Bouton de vérification différent selon le type */}
-                            {signatureType?.label === 'PKI' ? (
+                            {typeValue === 'pki' ? (
                               <Tooltip title="Vérifier la signature numérique PKI">
                                 <IconButton 
                                   size="small" 
                                   color="success" 
-                                  onClick={() => verifierSignature(docId, docNom, typeSignature)}
+                                  onClick={() => verifierSignature(docId, docNom, typeValue)}
                                 >
                                   <VerifiedUserIcon fontSize="small" />
                                 </IconButton>
@@ -235,7 +242,7 @@ const TransactionsView = ({ invitations, loading }) => {
                                 <IconButton 
                                   size="small" 
                                   color="info" 
-                                  onClick={() => verifierSignature(docId, docNom, typeSignature)}
+                                  onClick={() => verifierSignature(docId, docNom, typeValue)}
                                 >
                                   <SimpleIcon fontSize="small" />
                                 </IconButton>
