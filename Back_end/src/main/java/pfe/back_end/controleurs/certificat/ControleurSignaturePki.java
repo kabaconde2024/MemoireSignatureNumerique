@@ -70,10 +70,27 @@ public ResponseEntity<?> signerDocumentPki(@RequestBody Map<String, Object> payl
         System.out.println("========================================");
         System.out.println("=== DÉBUT SIGNATURE PKI ===");
         System.out.println("Timestamp: " + LocalDateTime.now());
-        System.out.println("Payload reçu: " + payload.keySet());
+        System.out.println("Payload reçu: " + payload);
+        
+        // Validation des champs obligatoires
+        if (!payload.containsKey("token") || payload.get("token") == null) {
+            return ResponseEntity.badRequest().body(Map.of("erreur", "Token manquant"));
+        }
+        if (!payload.containsKey("otp") || payload.get("otp") == null) {
+            return ResponseEntity.badRequest().body(Map.of("erreur", "Code OTP manquant"));
+        }
+        if (!payload.containsKey("x") || !payload.containsKey("y") || !payload.containsKey("pageNumber")) {
+            return ResponseEntity.badRequest().body(Map.of("erreur", "Coordonnées de signature manquantes"));
+        }
         
         // Récupérer l'email de l'utilisateur connecté
-        String emailConnecte = SecurityContextHolder.getContext().getAuthentication().getName();
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        if (auth == null || !auth.isAuthenticated()) {
+            System.err.println("❌ Utilisateur non authentifié");
+            return ResponseEntity.status(401).body(Map.of("erreur", "Utilisateur non authentifié"));
+        }
+        
+        String emailConnecte = auth.getName();
         System.out.println("📧 Email connecté: " + emailConnecte);
         
         String token = (String) payload.get("token");
@@ -84,8 +101,13 @@ public ResponseEntity<?> signerDocumentPki(@RequestBody Map<String, Object> payl
 
         // 1. Vérification de l'utilisateur
         System.out.println("🔍 Recherche de l'utilisateur...");
-        Utilisateur actuel = utilisateurRepository.findByEmail(emailConnecte)
-                .orElseThrow(() -> new RuntimeException("Utilisateur non trouvé: " + emailConnecte));
+        Optional<Utilisateur> userOpt = utilisateurRepository.findByEmail(emailConnecte);
+        if (userOpt.isEmpty()) {
+            System.err.println("❌ Utilisateur non trouvé: " + emailConnecte);
+            return ResponseEntity.status(404).body(Map.of("erreur", "Utilisateur non trouvé"));
+        }
+        
+        Utilisateur actuel = userOpt.get();
         System.out.println("✅ Utilisateur trouvé: " + actuel.getEmail());
         System.out.println("📊 Statut PKI: " + actuel.getStatusPki());
 
@@ -99,11 +121,15 @@ public ResponseEntity<?> signerDocumentPki(@RequestBody Map<String, Object> payl
 
         // 2. Vérification de l'invitation
         System.out.println("🔍 Recherche de l'invitation...");
-        InvitationSignature invitation = invitationRepository.findByTokenSignature(token)
-                .orElseThrow(() -> new RuntimeException("Invitation non trouvée pour token: " + token));
+        Optional<InvitationSignature> invOpt = invitationRepository.findByTokenSignature(token);
+        if (invOpt.isEmpty()) {
+            System.err.println("❌ Invitation non trouvée pour token: " + token);
+            return ResponseEntity.status(404).body(Map.of("erreur", "Invitation non trouvée"));
+        }
+        
+        InvitationSignature invitation = invOpt.get();
         System.out.println("✅ Invitation trouvée");
         System.out.println("📄 Statut invitation: " + invitation.getStatut());
-        System.out.println("📧 Email destinataire: " + invitation.getEmailDestinataire());
 
         if ("SIGNE".equals(invitation.getStatut())) {
             System.err.println("❌ Document déjà signé");
@@ -112,12 +138,22 @@ public ResponseEntity<?> signerDocumentPki(@RequestBody Map<String, Object> payl
 
         // 3. Récupération du document
         Document doc = invitation.getDocument();
+        if (doc == null) {
+            System.err.println("❌ Document associé à l'invitation est null");
+            return ResponseEntity.status(404).body(Map.of("erreur", "Document non trouvé"));
+        }
+        
         System.out.println("📄 Document ID: " + doc.getId());
         System.out.println("📄 Nom fichier: " + doc.getNomFichier());
-        System.out.println("📄 Taille: " + doc.getTaille() + " bytes");
         
         System.out.println("🔍 Récupération du contenu PDF...");
-        byte[] pdfOriginal = serviceDocument.getContenu(doc.getId());
+        byte[] pdfOriginal = null;
+        try {
+            pdfOriginal = serviceDocument.getContenu(doc.getId());
+        } catch (Exception e) {
+            System.err.println("❌ Erreur récupération contenu: " + e.getMessage());
+            return ResponseEntity.status(500).body(Map.of("erreur", "Erreur récupération du document: " + e.getMessage()));
+        }
         
         if (pdfOriginal == null || pdfOriginal.length == 0) {
             System.err.println("❌ Contenu PDF vide ou null");
@@ -126,47 +162,52 @@ public ResponseEntity<?> signerDocumentPki(@RequestBody Map<String, Object> payl
         System.out.println("✅ PDF original chargé, taille: " + pdfOriginal.length + " bytes");
 
         // 4. Préparation des données de signature
-        String nom = actuel.getPrenom() + " " + actuel.getNom();
-        String email = actuel.getEmail();  // ✅ CORRECTION: Utilisation de l'email au lieu du téléphone
+        String nom = (actuel.getPrenom() != null ? actuel.getPrenom() : "") + " " + (actuel.getNom() != null ? actuel.getNom() : "");
+        String email = actuel.getEmail();
         System.out.println("👤 Signataire: " + nom);
         System.out.println("📧 Email pour OTP: " + email);
 
         float x = Float.parseFloat(payload.get("x").toString());
         float y = Float.parseFloat(payload.get("y").toString());
         int page = Integer.parseInt(payload.get("pageNumber").toString());
-        float displayWidth = Float.parseFloat(payload.get("displayWidth").toString());
-        float displayHeight = Float.parseFloat(payload.get("displayHeight").toString());
+        float displayWidth = payload.containsKey("displayWidth") ? Float.parseFloat(payload.get("displayWidth").toString()) : 800;
+        float displayHeight = payload.containsKey("displayHeight") ? Float.parseFloat(payload.get("displayHeight").toString()) : 600;
         
         System.out.println("📍 Coordonnées de signature:");
         System.out.println("   - Page: " + page);
         System.out.println("   - X: " + x);
         System.out.println("   - Y: " + y);
-        System.out.println("   - Largeur affichage: " + displayWidth);
-        System.out.println("   - Hauteur affichage: " + displayHeight);
 
         String aliasHSM = actuel.getEmail();
         System.out.println("🔑 Alias HSM: " + aliasHSM);
 
         // 5. Exécution de la signature PKI
         System.out.println("🔐 Appel de la signature PKI...");
-        byte[] pdfSigne = serviceSignaturePki.signerDocumentPki(
-                pdfOriginal, nom, email, otp,  // ✅ CORRECTION: email au lieu de tel
-                x, y, page,
-                displayWidth, displayHeight, aliasHSM, doc.getId()
-        );
+        byte[] pdfSigne = null;
+        try {
+            pdfSigne = serviceSignaturePki.signerDocumentPki(
+                    pdfOriginal, nom, email, otp,
+                    x, y, page,
+                    displayWidth, displayHeight, aliasHSM, doc.getId()
+            );
+        } catch (Exception e) {
+            System.err.println("❌ Erreur lors de la signature PKI: " + e.getMessage());
+            e.printStackTrace();
+            return ResponseEntity.status(500).body(Map.of("erreur", "Erreur signature PKI: " + e.getMessage()));
+        }
         
         if (pdfSigne == null || pdfSigne.length == 0) {
             System.err.println("❌ Échec de la signature - PDF signé vide");
-            throw new RuntimeException("La signature a échoué, PDF signé vide");
+            return ResponseEntity.status(500).body(Map.of("erreur", "La signature a échoué, PDF signé vide"));
         }
-        System.out.println("✅ Signature PKI réussie, PDF signé taille: " + pdfSigne.length + " bytes");
+        System.out.println("✅ Signature PKI réussie, taille: " + pdfSigne.length + " bytes");
 
         // 6. Mise à jour de l'invitation
         System.out.println("📝 Mise à jour de l'invitation...");
         invitation.setStatut("SIGNE");
         invitation.setDateSignature(LocalDateTime.now());
-        invitation.setCoordonneeX(x);
-        invitation.setCoordonneeY(y);
+        invitation.setCoordonneeX((double) x);
+        invitation.setCoordonneeY((double) y);
         invitation.setPageNumber(page);
         invitationRepository.save(invitation);
         System.out.println("✅ Invitation mise à jour");
@@ -176,7 +217,6 @@ public ResponseEntity<?> signerDocumentPki(@RequestBody Map<String, Object> payl
         String nouveauNom = "SIGNE_PKI_" + doc.getNomFichier();
         String cheminStockage = serviceDocument.sauvegarderSurDisque(doc.getId(), pdfSigne, nouveauNom);
         System.out.println("✅ Document sauvegardé: " + nouveauNom);
-        System.out.println("📂 Chemin: " + cheminStockage);
 
         // 8. Mise à jour des métadonnées du document
         System.out.println("📝 Mise à jour des métadonnées...");
@@ -187,7 +227,6 @@ public ResponseEntity<?> signerDocumentPki(@RequestBody Map<String, Object> payl
         doc.setDateHorodatage(LocalDateTime.now());
         doc.setSignataire(actuel);
         
-        // Stocker la signature numérique en base64
         String signatureBase64 = Base64.getEncoder().encodeToString(pdfSigne);
         doc.setSignatureNumerique(signatureBase64);
         
@@ -201,7 +240,6 @@ public ResponseEntity<?> signerDocumentPki(@RequestBody Map<String, Object> payl
                 doc.getId(), doc.getNomFichier(),
                 "PKI", "SUCCESS", "Signature PKI avec certificat", httpServletRequest
         );
-        System.out.println("✅ Audit enregistré");
 
         System.out.println("🎉 Signature PKI réussie pour: " + emailConnecte);
         System.out.println("========================================\n");
@@ -215,21 +253,23 @@ public ResponseEntity<?> signerDocumentPki(@RequestBody Map<String, Object> payl
                 .headers(headers)
                 .body(pdfSigne);
 
+    } catch (NumberFormatException e) {
+        System.err.println("❌ Erreur de format de nombre: " + e.getMessage());
+        return ResponseEntity.badRequest().body(Map.of("erreur", "Format de coordonnées invalide: " + e.getMessage()));
     } catch (Exception e) {
         System.err.println("========================================");
         System.err.println("❌ ERREUR SIGNATURE PKI");
         System.err.println("Message: " + e.getMessage());
-        System.err.println("Cause: " + (e.getCause() != null ? e.getCause().getMessage() : "N/A"));
+        System.err.println("Classe: " + e.getClass().getName());
         e.printStackTrace();
         System.err.println("========================================\n");
         
         return ResponseEntity.internalServerError().body(Map.of(
-            "erreur", e.getMessage(),
+            "erreur", "Erreur interne: " + e.getMessage(),
             "type", e.getClass().getSimpleName()
         ));
     }
 }
-
     @GetMapping("/verifier-certificat-expediteur/{token}")
     public ResponseEntity<?> verifierCertificatExpediteur(@PathVariable String token) {
         try {
