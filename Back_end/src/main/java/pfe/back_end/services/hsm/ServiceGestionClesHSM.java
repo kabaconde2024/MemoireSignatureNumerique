@@ -33,43 +33,44 @@ public class ServiceGestionClesHSM {
     public Provider getFournisseurPKCS11() {
         return initialiserFournisseur();
     }
-private Provider initialiserFournisseur() {
-    if (fournisseurPKCS11 == null) {
-        try {
-            String os = System.getProperty("os.name").toLowerCase();
-            StringBuilder configContent = new StringBuilder();
-            configContent.append("name = SoftHSM2\n");
+    
+    private Provider initialiserFournisseur() {
+        if (fournisseurPKCS11 == null) {
+            try {
+                String os = System.getProperty("os.name").toLowerCase();
+                StringBuilder configContent = new StringBuilder();
+                configContent.append("name = SoftHSM2\n");
 
-            if (os.contains("win")) {
-                configContent.append("library = C:/SoftHSM2/lib/softhsm2-x64.dll\n");
-                configContent.append("slot = 2145520111\n");
-            } else {
-                // IMPORTANT : Sur Render, on utilise la lib installée mais NOTRE config
-                configContent.append("library = /usr/lib/x86_64-linux-gnu/softhsm/libsofthsm2.so\n");
-                configContent.append("slotListIndex = 0\n");
+                if (os.contains("win")) {
+                    configContent.append("library = C:/SoftHSM2/lib/softhsm2-x64.dll\n");
+                    configContent.append("slot = 2145520111\n");
+                } else {
+                    // IMPORTANT : Sur Render, on utilise la lib installée mais NOTRE config
+                    configContent.append("library = /usr/lib/x86_64-linux-gnu/softhsm/libsofthsm2.so\n");
+                    configContent.append("slotListIndex = 0\n");
+                }
+
+                File tempConfig = File.createTempFile("sunpkcs11", ".cfg");
+                Files.writeString(tempConfig.toPath(), configContent.toString());
+                
+                Provider p = Security.getProvider("SunPKCS11");
+                fournisseurPKCS11 = p.configure(tempConfig.getAbsolutePath());
+                
+                // On vérifie si déjà présent pour éviter les doublons
+                if (Security.getProvider(fournisseurPKCS11.getName()) != null) {
+                    Security.removeProvider(fournisseurPKCS11.getName());
+                }
+                Security.addProvider(fournisseurPKCS11);
+
+                System.out.println("✅ HSM initialisé avec succès");
+            } catch (Exception e) {
+                // Loggez l'erreur complète pour la voir dans Render
+                e.printStackTrace(); 
+                throw new RuntimeException("Erreur PKCS11 : " + e.getMessage());
             }
-
-            File tempConfig = File.createTempFile("sunpkcs11", ".cfg");
-            Files.writeString(tempConfig.toPath(), configContent.toString());
-            
-            Provider p = Security.getProvider("SunPKCS11");
-            fournisseurPKCS11 = p.configure(tempConfig.getAbsolutePath());
-            
-            // On vérifie si déjà présent pour éviter les doublons
-            if (Security.getProvider(fournisseurPKCS11.getName()) != null) {
-                Security.removeProvider(fournisseurPKCS11.getName());
-            }
-            Security.addProvider(fournisseurPKCS11);
-
-            System.out.println("✅ HSM initialisé avec succès");
-        } catch (Exception e) {
-            // Loggez l'erreur complète pour la voir dans Render
-            e.printStackTrace(); 
-            throw new RuntimeException("Erreur PKCS11 : " + e.getMessage());
         }
+        return fournisseurPKCS11;
     }
-    return fournisseurPKCS11;
-}
 
     public void genererIdentiteSecurisee(String aliasUtilisateur) throws Exception {
         KeyStore ks = getKeyStore();
@@ -162,5 +163,41 @@ private Provider initialiserFournisseur() {
         // Chargement du KeyStore avec le PIN utilisateur SoftHSM2
         ks.load(null, pinUtilisateur.toCharArray());
         return ks;
+    }
+
+    /**
+     * ✅ Vérifie et crée automatiquement l'identité HSM pour un utilisateur
+     * Cette méthode est appelée par le contrôleur avant la signature
+     */
+    public void verifierOuCreerIdentite(String aliasUtilisateur, Utilisateur utilisateur) {
+        try {
+            System.out.println("🔐 Vérification identité HSM pour: " + aliasUtilisateur);
+            
+            // Vérifier si le KeyStore existe et contient l'alias
+            KeyStore ks = getKeyStore();
+            
+            if (!ks.containsAlias(aliasUtilisateur)) {
+                System.out.println("   - Alias non trouvé, création d'une nouvelle identité...");
+                genererIdentiteSecurisee(aliasUtilisateur);
+                
+                // Mettre à jour l'utilisateur avec le statut ACTIVE
+                utilisateur.setStatusPki("ACTIVE");
+                utilisateur.setHsmAlias(aliasUtilisateur);
+                
+                System.out.println("✅ Identité HSM créée avec succès pour: " + aliasUtilisateur);
+            } else {
+                System.out.println("✅ Identité HSM existante trouvée pour: " + aliasUtilisateur);
+                
+                // Vérifier si le statut est ACTIVE, sinon le mettre à jour
+                if (!"ACTIVE".equals(utilisateur.getStatusPki())) {
+                    utilisateur.setStatusPki("ACTIVE");
+                    System.out.println("📊 Statut PKI mis à jour: ACTIVE");
+                }
+            }
+        } catch (Exception e) {
+            System.err.println("❌ Erreur lors de la vérification/création de l'identité HSM: " + e.getMessage());
+            e.printStackTrace();
+            throw new RuntimeException("Erreur HSM: " + e.getMessage(), e);
+        }
     }
 }
