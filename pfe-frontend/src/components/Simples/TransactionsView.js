@@ -20,7 +20,6 @@ const TransactionsView = ({ invitations, loading }) => {
   const [currentVerificationResult, setCurrentVerificationResult] = useState(null);
   const [downloading, setDownloading] = useState({});
 
-  // Debug: Afficher les données reçues
   useEffect(() => {
     if (invitations && invitations.length > 0) {
       console.log("=== INVITATIONS REÇUES ===");
@@ -63,11 +62,9 @@ const TransactionsView = ({ invitations, loading }) => {
     }
   };
 
-  // ✅ CORRECTION : Utiliser l'endpoint unique
   const handleDownload = async (documentId, nomFichier, typeSignature) => {
     setDownloading(prev => ({ ...prev, [documentId]: true }));
     try {
-      // Utiliser l'endpoint unique qui existe déjà
       const endpoint = `https://memoiresignaturenumerique.onrender.com/api/documents/download-signe/${documentId}`;
       
       console.log(`Téléchargement document ${documentId} (type: ${typeSignature})`);
@@ -119,12 +116,10 @@ const TransactionsView = ({ invitations, loading }) => {
     }
   };
 
-  // Fonction pour récupérer le type de signature
   const getSignatureType = (invitation) => {
     let type = invitation.type_signature || invitation.typeSignature || invitation.type;
     
     if (!type) {
-      // Déduire du nom du fichier si non trouvé
       const fileName = invitation.nomFichier || invitation.documentNom || '';
       if (fileName.includes('PKI') || fileName.includes('SIGNE_PKI')) {
         type = 'pki';
@@ -253,7 +248,8 @@ const TransactionsView = ({ invitations, loading }) => {
                               </IconButton>
                             </Tooltip>
                             
-                            {typeValue === 'pki' ? (
+                            {/* ✅ Bouton de vérification UNIQUEMENT pour PKI */}
+                            {typeValue === 'pki' && (
                               <Tooltip title="Vérifier la signature numérique PKI">
                                 <IconButton 
                                   size="small" 
@@ -261,16 +257,6 @@ const TransactionsView = ({ invitations, loading }) => {
                                   onClick={() => verifierSignature(docId, docNom, typeValue)}
                                 >
                                   <VerifiedUserIcon fontSize="small" />
-                                </IconButton>
-                              </Tooltip>
-                            ) : (
-                              <Tooltip title="Document signé électroniquement (Simple)">
-                                <IconButton 
-                                  size="small" 
-                                  color="info" 
-                                  onClick={() => verifierSignature(docId, docNom, typeValue)}
-                                >
-                                  <SimpleIcon fontSize="small" />
                                 </IconButton>
                               </Tooltip>
                             )}
@@ -328,7 +314,6 @@ const TransactionsView = ({ invitations, loading }) => {
         </Stack>
       </Paper>
 
-      {/* Dialog pour le rapport de vérification */}
       <Dialog 
         open={openReportDialog} 
         onClose={() => setOpenReportDialog(false)}
