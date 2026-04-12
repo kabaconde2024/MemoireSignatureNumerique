@@ -31,13 +31,8 @@ public class ServiceGestionDocuments {
     @Autowired
     private UtilisateurRepository utilisateurRepository;
 
-    /**
-     * ✅ Enregistre un nouveau document (Upload initial)
-     * Correction : Association automatique du propriétaire connecté.
-     */
     @Transactional
     public Document enregistrerDocument(MultipartFile fichier) throws Exception {
-        // 1. Récupérer l'utilisateur actuellement connecté
         String email = SecurityContextHolder.getContext().getAuthentication().getName();
         Utilisateur proprietaire = utilisateurRepository.findByEmailIgnoreCase(email)
                 .orElseThrow(() -> new RuntimeException("Utilisateur non trouvé"));
@@ -53,9 +48,7 @@ public class ServiceGestionDocuments {
         doc.setStatut(StatutDocument.EN_ATTENTE);
         doc.setDateCreation(LocalDateTime.now());
         doc.setEstSigne(false);
-        doc.setProprietaire(proprietaire); // 👈 Important pour la sécurité
-        
-        // Stockage binaire
+        doc.setProprietaire(proprietaire);
         doc.setContenu(octets); 
         doc.setCheminStockage("db://" + System.currentTimeMillis() + "_" + fichier.getOriginalFilename());
 
@@ -63,14 +56,16 @@ public class ServiceGestionDocuments {
     }
 
     /**
-     * ✅ Finalise le processus de signature
-     * Correction : Mise à jour de la taille et cohérence du hash final.
+     * ✅ FINALISATION CORRIGÉE - Stocke le hash au lieu du PDF complet
      */
     @Transactional
     public Document finaliserSignatureGenerique(Long idDocument, byte[] contenuSigne, Utilisateur signataire, String token) {
         Document doc = documentRepository.findById(idDocument)
                 .orElseThrow(() -> new RuntimeException("Document introuvable ID : " + idDocument));
 
+        System.out.println("=== FINALISATION SIGNATURE ===");
+        System.out.println("Document ID: " + idDocument);
+        
         // 1. Mise à jour du contenu et métadonnées
         doc.setContenu(contenuSigne);
         doc.setTaille((long) contenuSigne.length);
@@ -78,7 +73,6 @@ public class ServiceGestionDocuments {
         String nomSigne = "SIGNE_" + doc.getNomFichier().replace("SIGNE_", "");
         doc.setNomFichier(nomSigne);
         doc.setCheminStockage("db://" + System.currentTimeMillis() + "_" + nomSigne);
-        
         doc.setEstSigne(true);
         doc.setStatut(StatutDocument.SIGNE);
         doc.setDateHorodatage(LocalDateTime.now());
@@ -87,8 +81,10 @@ public class ServiceGestionDocuments {
             doc.setSignataire(signataire);
         }
 
-        // 2. Stockage de la preuve de signature
-        doc.setSignatureNumerique(Base64.getEncoder().encodeToString(contenuSigne));
+        // 2. ✅ CORRECTION CRUCIALE : Stocker le HASH, pas le PDF complet !
+        String hashSignature = calculerHash(contenuSigne);
+        doc.setSignatureNumerique(hashSignature);
+        System.out.println("✅ Signature hash stocké: " + hashSignature);
 
         // 3. Gestion des invitations
         if (token != null) {
@@ -96,25 +92,28 @@ public class ServiceGestionDocuments {
                     .orElseThrow(() -> new RuntimeException("Invitation invalide"));
             inv.setStatut("SIGNE");
             inv.setDateSignature(LocalDateTime.now());
-            inv.setDocument(doc); // Assure le lien
+            inv.setDocument(doc);
             invitationRepository.save(inv);
         }
 
         // 4. Preuve d'intégrité finale
         String hashStr = calculerHash(contenuSigne);
         doc.setHashSha256(hashStr);
-        doc.setHashDocument(hashStr); 
+        doc.setHashDocument(hashStr);
+        System.out.println("✅ Hash document final: " + hashStr);
 
-        return documentRepository.save(doc);
+        Document saved = documentRepository.save(doc);
+        System.out.println("✅ Document finalisé avec succès");
+        return saved;
     }
 
     @Transactional(readOnly = true)
     public byte[] getContenu(Long id) {
         Document doc = documentRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Document introuvable"));
-        
+
         if (doc.getContenu() == null) {
-            throw new RuntimeException("Contenu binaire inexistant.");
+            throw new RuntimeException("Le contenu binaire est vide en base de données.");
         }
         return doc.getContenu();
     }
@@ -136,9 +135,6 @@ public class ServiceGestionDocuments {
         }
     }
 
-    /**
-     * ✅ Sauvegarde spécifique pour les processus asynchrones ou étapes intermédiaires
-     */
     @Transactional
     public String sauvegarderSurDisque(Long idDocument, byte[] contenu, String nomFichier) {
         Document doc = documentRepository.findById(idDocument)
@@ -151,5 +147,12 @@ public class ServiceGestionDocuments {
 
         documentRepository.save(doc);
         return chemin;
+    }
+    
+    /**
+     * Méthode publique pour calculer le hash (accessible depuis les contrôleurs)
+     */
+    public String calculerHashPublic(byte[] donnees) {
+        return calculerHash(donnees);
     }
 }
