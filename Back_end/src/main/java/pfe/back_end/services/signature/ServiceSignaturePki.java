@@ -45,21 +45,28 @@ public class ServiceSignaturePki {
     private static final float SIGNATURE_HEIGHT = 80;
 
     static {
-        // Ajout de BouncyCastle si non présent pour les opérations de hashage iText
         if (Security.getProvider("BC") == null) {
             Security.addProvider(new BouncyCastleProvider());
         }
     }
 
-    public byte[] signerDocumentPki(byte[] pdfBytes, String nom, String tel, String otp,
+    // ✅ CORRECTION : Remplacer 'tel' par 'email' pour la vérification OTP
+    public byte[] signerDocumentPki(byte[] pdfBytes, String nom, String email, String otp,
                                     float x, float y, int pageNumber,
                                     float displayWidth, float displayHeight,
                                     String aliasUtilisateur, Long documentId) throws Exception {
 
-        // 1. Vérification OTP
-        if (!serviceSmsOtp.verifyOtp(tel, otp)) {
+        System.out.println("=== VÉRIFICATION OTP PKI ===");
+        System.out.println("Email: " + email);
+        System.out.println("OTP reçu: " + otp);
+        
+        // 1. Vérification OTP - Utilisation de l'email au lieu du téléphone
+        if (!serviceSmsOtp.verifyOtp(email, otp)) {
+            System.err.println("❌ OTP invalide pour: " + email);
             throw new RuntimeException("Code OTP invalide pour la signature PKI");
         }
+        
+        System.out.println("✅ OTP valide pour: " + email);
 
         // 2. Préparation des coordonnées
         float[] coords;
@@ -91,10 +98,8 @@ public class ServiceSignaturePki {
              ByteArrayOutputStream baos = new ByteArrayOutputStream()) {
 
             PdfReader reader = new PdfReader(bais);
-            // Utilisation du mode Append pour conserver l'intégrité incrémentale
             PdfSigner signer = new PdfSigner(reader, baos, new StampingProperties().useAppendMode());
 
-            // Configuration de l'apparence visuelle
             Rectangle rect = new Rectangle(coords[0], coords[1], SIGNATURE_WIDTH, SIGNATURE_HEIGHT);
             PdfSignatureAppearance appearance = signer.getSignatureAppearance();
 
@@ -113,7 +118,6 @@ public class ServiceSignaturePki {
             appearance.setLayer2Text(texteSignature);
             appearance.setLayer2FontSize(7);
 
-            // Implémentation iText liée au Provider PKCS11 (CORRECTION PRODUCTION)
             IExternalDigest digest = new BouncyCastleDigest();
             IExternalSignature signature = new IExternalSignature() {
                 @Override
@@ -129,7 +133,6 @@ public class ServiceSignaturePki {
                 @Override
                 public byte[] sign(byte[] message) {
                     try {
-                        // FORCE l'utilisation du provider SunPKCS11 initialisé dans ServiceGestionClesHSM
                         java.security.Signature sig = java.security.Signature.getInstance("SHA256withRSA", serviceHSM.getFournisseurPKCS11());
                         sig.initSign(privateKey);
                         sig.update(message);
@@ -140,13 +143,12 @@ public class ServiceSignaturePki {
                 }
             };
 
-            // Signature détachée selon le standard CAdES
             signer.signDetached(digest, signature, chaineCertificats, null, null, null, 0, PdfSigner.CryptoStandard.CADES);
             pdfSigne = baos.toByteArray();
             System.out.println("✅ Document signé via HSM avec succès.");
         }
 
-        // 5. Horodatage de Production
+        // 5. Horodatage
         if (serviceHorodatage != null && serviceHorodatage.isEnabled()) {
             try {
                 MessageDigest sha256 = MessageDigest.getInstance("SHA-256");
@@ -155,8 +157,6 @@ public class ServiceSignaturePki {
 
                 if (tokenHorodatage != null) {
                     String tokenBase64 = serviceHorodatage.jetonEnBase64(tokenHorodatage);
-                    
-                    // Métadonnées & BDD
                     pdfSigne = integrerHorodatageMetadonnee(pdfSigne, tokenBase64, nom);
                     sauvegarderHorodatageEnBDD(documentId, tokenBase64);
                     System.out.println("✅ Horodatage RFC 3161 appliqué.");
