@@ -163,12 +163,13 @@ public class ControleurSignaturePki {
             );
 
             // 6. Mise à jour de l'invitation
-            invitation.setStatut("SIGNE");
-            invitation.setDateSignature(LocalDateTime.now());
-            invitation.setCoordonneeX((double) x);
-            invitation.setCoordonneeY((double) y);
-            invitation.setPageNumber(page);
-            invitationRepository.save(invitation);
+          // 6. Mise à jour de l'invitation
+invitation.setStatut("SIGNE");
+invitation.setDateSignature(LocalDateTime.now());
+invitation.setCoordonneeX(x);  // ✅ Correction : x est déjà un float
+invitation.setCoordonneeY(y);  // ✅ Correction : y est déjà un float
+invitation.setPageNumber(page);
+invitationRepository.save(invitation);
 
             // 7. Sauvegarde du document signé
             String nouveauNom = "SIGNE_PKI_" + doc.getNomFichier();
