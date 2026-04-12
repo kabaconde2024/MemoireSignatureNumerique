@@ -167,20 +167,22 @@ const SignaturePkiPage = () => {
         setShowPositionSelector(false);
     };
 
-    // 4. Envoi du code OTP
-    const handleSendOtp = async () => {
-    if (!invitation?.emailDestinataire) { // Vérifie l'email au lieu du téléphone
-        alert("Adresse email non trouvée");
+// 4. Envoi du code OTP
+const handleSendOtp = async () => {
+    if (!invitation?.telephoneSignataire) {
+        alert("Numéro de téléphone non trouvé pour l'envoi du code SMS");
         return;
     }
     
     try {
         setLoading(true);
+        // ✅ Envoi du token pour récupérer le numéro de téléphone
         await axios.post(`https://memoiresignaturenumerique.onrender.com/api/signature/send-otp?token=${token}`);
         setIsOtpSent(true);
-        alert(`✅ Code de sécurité envoyé à : ${invitation.emailDestinataire}`);
+        alert(`✅ Code de sécurité envoyé au : ${invitation.telephoneSignataire}`);
     } catch (err) {
-        alert("❌ Erreur lors de l'envoi de l'email.");
+        console.error("Erreur envoi OTP:", err);
+        alert("❌ Erreur lors de l'envoi du code SMS. Vérifiez votre numéro de téléphone.");
     } finally {
         setLoading(false);
     }
@@ -201,80 +203,74 @@ const SignaturePkiPage = () => {
         }, 100);
     };
 
-    // 6. Signature PKI (avec certificat)
-    const handlePkiSign = async () => {
-        if (!accepted) {
-            alert("Veuillez accepter les termes de signature");
-            return;
-        }
+ // 6. Signature PKI (avec certificat)
+const handlePkiSign = async () => {
+    if (!accepted) {
+        alert("Veuillez accepter les termes de signature");
+        return;
+    }
+    
+    if (!selectedPosition) {
+        alert("Veuillez d'abord sélectionner l'emplacement de la signature");
+        return;
+    }
+    
+    if (!isOtpSent) {
+        alert("Veuillez d'abord demander un code OTP");
+        return;
+    }
+    
+    if (!otp || otp.length < 4) {
+        alert("Veuillez saisir un code OTP valide (4 chiffres minimum)");
+        return;
+    }
+
+    setLoading(true);
+    try {
+        // ✅ NE PAS envoyer pdfBase64 - le backend va chercher le document par ID
+        const payload = {
+            token: token,
+            otp: otp,
+            x: selectedPosition.x,
+            y: selectedPosition.y,
+            pageNumber: selectedPosition.pageNumber,
+            displayWidth: selectedPosition.containerWidth,
+            displayHeight: selectedPosition.containerHeight
+        };
+
+        console.log("📤 Envoi signature PKI:", payload);
+
+        const endpoint = 'https://memoiresignaturenumerique.onrender.com/api/signature/pki/executer';
         
-        if (!selectedPosition) {
-            alert("Veuillez d'abord sélectionner l'emplacement de la signature");
-            return;
-        }
-        
-        if (!isOtpSent) {
-            alert("Veuillez d'abord demander un code OTP");
-            return;
-        }
-        
-        if (!otp || otp.length < 4) {
-            alert("Veuillez saisir un code OTP valide (4 chiffres minimum)");
-            return;
-        }
+        const pkiResponse = await axios.post(endpoint, payload, { 
+            withCredentials: true,
+            responseType: 'blob'
+        });
 
-        setLoading(true);
-        try {
-            const response = await fetch(pdfUrl);
-            const blob = await response.blob();
-            const pdfBase64 = await new Promise((resolve) => {
-                const reader = new FileReader();
-                reader.onloadend = () => resolve(reader.result.split(',')[1]);
-                reader.readAsDataURL(blob);
-            });
-
-            const payload = {
-                token: token,
-                pdfBase64: pdfBase64,
-                otp: otp,
-                x: selectedPosition.x,
-                y: selectedPosition.y,
-                pageNumber: selectedPosition.pageNumber,
-                displayWidth: selectedPosition.containerWidth,
-                displayHeight: selectedPosition.containerHeight
-            };
-
-            const endpoint = 'https://memoiresignaturenumerique.onrender.com/api/signature/pki/executer';
-            
-            const pkiResponse = await axios.post(endpoint, payload, { 
-                withCredentials: true,
-                responseType: 'blob'
-            });
-
-            const contentType = pkiResponse.headers['content-type'];
-            if (contentType && contentType.includes('application/pdf')) {
-                const fileName = `Signé_PKI_${invitation.nomDocument || 'document'}.pdf`;
-                setDownloadedFileName(fileName);
-                downloadFile(pkiResponse.data, fileName);
-                setShowSuccessModal(true);
-            } else {
-                throw new Error("Le fichier reçu n'est pas un PDF valide");
-            }
-        } catch (err) {
-            console.error("Erreur signature PKI:", err);
-            let errorMessage = "Erreur lors de la signature PKI. ";
-            if (err.response?.data?.erreur) {
-                errorMessage += err.response.data.erreur;
-            } else if (err.message) {
-                errorMessage += err.message;
-            } else {
-                errorMessage += "Vérifiez votre connexion et réessayez.";
-            }
-            alert(errorMessage);
-        } finally {
-            setLoading(false);
+        const contentType = pkiResponse.headers['content-type'];
+        if (contentType && contentType.includes('application/pdf')) {
+            const fileName = `Signé_PKI_${invitation.nomDocument || 'document'}.pdf`;
+            setDownloadedFileName(fileName);
+            downloadFile(pkiResponse.data, fileName);
+            setShowSuccessModal(true);
+        } else {
+            throw new Error("Le fichier reçu n'est pas un PDF valide");
         }
-    };
+    } catch (err) {
+        console.error("Erreur signature PKI:", err);
+        let errorMessage = "Erreur lors de la signature PKI. ";
+        if (err.response?.data?.erreur) {
+            errorMessage += err.response.data.erreur;
+        } else if (err.message) {
+            errorMessage += err.message;
+        } else {
+            errorMessage += "Vérifiez votre connexion et réessayez.";
+        }
+        alert(errorMessage);
+    } finally {
+        setLoading(false);
+    }
+};
 
     const handleCloseSuccessModal = () => {
         setShowSuccessModal(false);

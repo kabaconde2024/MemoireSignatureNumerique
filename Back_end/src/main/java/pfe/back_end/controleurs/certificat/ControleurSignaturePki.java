@@ -63,12 +63,19 @@ public class ControleurSignaturePki {
     @Autowired
     private HttpServletRequest httpServletRequest;
 
-    @PostMapping("/pki/executer")
+   @PostMapping("/pki/executer")
     @Transactional
     public ResponseEntity<?> signerDocumentPki(@RequestBody Map<String, Object> payload) {
         try {
+            System.out.println("=== DÉBUT SIGNATURE PKI ===");
+            System.out.println("Payload reçu: " + payload.keySet());
+            
+            // Récupérer l'email de l'utilisateur connecté
             String emailConnecte = SecurityContextHolder.getContext().getAuthentication().getName();
+            System.out.println("Email connecté: " + emailConnecte);
+            
             String token = (String) payload.get("token");
+            System.out.println("Token invitation: " + token);
 
             Utilisateur actuel = utilisateurRepository.findByEmail(emailConnecte)
                     .orElseThrow(() -> new RuntimeException("Utilisateur non trouvé"));
@@ -108,7 +115,7 @@ public class ControleurSignaturePki {
                     displayWidth, displayHeight, aliasHSM, doc.getId()
             );
 
-            // ✅ 1. Mettre à jour l'INVITATION
+            // Mettre à jour l'INVITATION
             invitation.setStatut("SIGNE");
             invitation.setDateSignature(LocalDateTime.now());
             invitation.setCoordonneeX(x);
@@ -116,12 +123,11 @@ public class ControleurSignaturePki {
             invitation.setPageNumber(page);
             invitationRepository.save(invitation);
 
-            // ✅ 2. Sauvegarder le contenu binaire en BDD via le service
+            // Sauvegarder le contenu binaire en BDD
             String nouveauNom = "SIGNE_PKI_" + doc.getNomFichier();
-            // CORRECTION : Appel de la méthode avec 'doc' déjà initialisé
             String cheminStockage = serviceDocument.sauvegarderSurDisque(doc.getId(), pdfSigne, nouveauNom);
 
-            // ✅ 3. Mettre à jour les métadonnées du DOCUMENT
+            // Mettre à jour les métadonnées du DOCUMENT
             doc.setCheminStockage(cheminStockage);
             doc.setNomFichier(nouveauNom);
             doc.setEstSigne(true);
@@ -129,7 +135,7 @@ public class ControleurSignaturePki {
             doc.setDateHorodatage(LocalDateTime.now());
             doc.setSignataire(actuel);
 
-            // ✅ 4. Stocker la signature numérique en base64 pour les preuves
+            // Stocker la signature numérique en base64 pour les preuves
             String signatureBase64 = Base64.getEncoder().encodeToString(pdfSigne);
             doc.setSignatureNumerique(signatureBase64);
 
@@ -142,6 +148,8 @@ public class ControleurSignaturePki {
                     "PKI", "SUCCESS", "Signature PKI avec certificat", httpServletRequest
             );
 
+            System.out.println("✅ Signature PKI réussie pour: " + emailConnecte);
+            
             // Retourner le PDF signé
             HttpHeaders headers = new HttpHeaders();
             headers.setContentType(MediaType.APPLICATION_PDF);
