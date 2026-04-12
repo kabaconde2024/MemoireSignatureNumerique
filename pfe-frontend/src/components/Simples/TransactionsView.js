@@ -27,8 +27,8 @@ const TransactionsView = ({ invitations, loading }) => {
       invitations.forEach((inv, idx) => {
         console.log(`Invitation ${idx}:`, {
           id: inv.id,
-          type_signature: inv.type_signature,
           typeSignature: inv.typeSignature,
+          type_signature: inv.type_signature,
           statut: inv.statut
         });
       });
@@ -63,12 +63,14 @@ const TransactionsView = ({ invitations, loading }) => {
     }
   };
 
+  // ✅ CORRECTION : Utiliser l'endpoint unique
   const handleDownload = async (documentId, nomFichier, typeSignature) => {
     setDownloading(prev => ({ ...prev, [documentId]: true }));
     try {
-      const endpoint = typeSignature === 'pki' 
-        ? `https://memoiresignaturenumerique.onrender.com/api/documents/download-signe-pki/${documentId}`
-        : `https://memoiresignaturenumerique.onrender.com/api/documents/download-signe/${documentId}`;
+      // Utiliser l'endpoint unique qui existe déjà
+      const endpoint = `https://memoiresignaturenumerique.onrender.com/api/documents/download-signe/${documentId}`;
+      
+      console.log(`Téléchargement document ${documentId} (type: ${typeSignature})`);
       
       const response = await axios.get(endpoint, {
         responseType: 'blob',
@@ -84,9 +86,17 @@ const TransactionsView = ({ invitations, loading }) => {
       link.click();
       link.remove();
       window.URL.revokeObjectURL(url);
+      
+      console.log("✅ Téléchargement réussi");
     } catch (error) {
       console.error("Erreur lors du téléchargement", error);
-      alert("Erreur : Impossible de télécharger le document signé.");
+      let errorMsg = "Impossible de télécharger le document signé.";
+      if (error.response?.status === 403) {
+        errorMsg = "Accès non autorisé au document.";
+      } else if (error.response?.status === 404) {
+        errorMsg = "Document non trouvé.";
+      }
+      alert(`Erreur : ${errorMsg}`);
     } finally {
       setDownloading(prev => ({ ...prev, [documentId]: false }));
     }
@@ -109,17 +119,18 @@ const TransactionsView = ({ invitations, loading }) => {
     }
   };
 
-  // ✅ Fonction pour récupérer le type de signature (supporte plusieurs formats)
+  // Fonction pour récupérer le type de signature
   const getSignatureType = (invitation) => {
-    // Essayer différents noms de champs possibles
-    let type = invitation.type_signature || 
-               invitation.typeSignature || 
-               invitation.type;
+    let type = invitation.type_signature || invitation.typeSignature || invitation.type;
     
-    // Si le type n'est pas défini, essayer de le déduire
     if (!type) {
-      // Par défaut, considérer comme 'simple' si ce n'est pas PKI
-      type = 'simple';
+      // Déduire du nom du fichier si non trouvé
+      const fileName = invitation.nomFichier || invitation.documentNom || '';
+      if (fileName.includes('PKI') || fileName.includes('SIGNE_PKI')) {
+        type = 'pki';
+      } else {
+        type = 'simple';
+      }
     }
     
     const typeLower = String(type).toLowerCase();
@@ -156,20 +167,18 @@ const TransactionsView = ({ invitations, loading }) => {
               <TableRow><TableCell colSpan={6} align="center">Aucune transaction trouvée.</TableCell></TableRow>
             ) : (
               invitations.map((t, index) => {
-                // Récupération des données avec fallbacks
                 const nom = t.nom_signataire || t.nomSignataire || "";
                 const prenom = t.prenom_signataire || t.prenomSignataire || "";
                 const email = t.email_destinataire || t.emailDestinataire || "N/A";
                 const telephone = t.telephone_signataire || t.telephoneSignataire || "N/A";
-                const docNom = t.document_nom || t.documentNom || t.nomFichier || "Document PDF";
-                const docId = t.document_id || t.documentId;
-                const dateInvitation = t.date_invitation || t.dateInvitation;
-                const dateSignature = t.date_signature || t.dateSignature;
+                const docNom = t.nomFichier || t.documentNom || "Document PDF";
+                const docId = t.documentId;
+                const dateInvitation = t.dateInvitation;
+                const dateSignature = t.dateSignature;
                 const statutBrut = t.statut || "";
                 const estSigne = statutBrut === "SIGNE" || !!dateSignature;
                 const isDownloading = downloading[docId];
                 
-                // ✅ Récupération du type de signature
                 const signatureType = getSignatureType(t);
                 const typeValue = signatureType.value;
 
@@ -244,7 +253,6 @@ const TransactionsView = ({ invitations, loading }) => {
                               </IconButton>
                             </Tooltip>
                             
-                            {/* Bouton de vérification selon le type */}
                             {typeValue === 'pki' ? (
                               <Tooltip title="Vérifier la signature numérique PKI">
                                 <IconButton 
