@@ -204,36 +204,51 @@ public class ControleurDocument {
         }
     }
 
-    /**
-     * ✅ Liste des invitations envoyées
-     */
-    @GetMapping("/mes-invitations")
-    @Transactional(readOnly = true)
-    public ResponseEntity<?> getMesInvitations(Authentication auth) {
-        try {
-            Utilisateur me = utilisateurRepository.findByEmailIgnoreCase(auth.getName())
-                    .orElseThrow(() -> new RuntimeException("Utilisateur non trouvé"));
+   /**
+ * ✅ Liste des invitations envoyées
+ */
+@GetMapping("/mes-invitations")
+@Transactional(readOnly = true)
+public ResponseEntity<?> getMesInvitations(Authentication auth) {
+    try {
+        Utilisateur me = utilisateurRepository.findByEmailIgnoreCase(auth.getName())
+                .orElseThrow(() -> new RuntimeException("Utilisateur non trouvé"));
 
-            List<InvitationSignature> list = invitationRepository.findByExpediteurOrderByDateInvitationDesc(me);
+        List<InvitationSignature> list = invitationRepository.findByExpediteurOrderByDateInvitationDesc(me);
 
-            List<Map<String, Object>> response = list.stream().map(inv -> {
-                Map<String, Object> map = new HashMap<>();
-                map.put("id", inv.getId());
-                map.put("nomFichier", inv.getDocument() != null ? inv.getDocument().getNomFichier() : "Document sans nom");
-                map.put("prenomSignataire", inv.getPrenomSignataire());
-                map.put("nomSignataire", inv.getNomSignataire());
-                map.put("emailDestinataire", inv.getEmailDestinataire());
-                map.put("dateInvitation", inv.getDateInvitation());
-                map.put("dateSignature", inv.getDateSignature());
-                map.put("statut", inv.getStatut());
-                return map;
-            }).collect(Collectors.toList());
+        List<Map<String, Object>> response = list.stream().map(inv -> {
+            Map<String, Object> map = new HashMap<>();
+            map.put("id", inv.getId());
+            map.put("nomFichier", inv.getDocument() != null ? inv.getDocument().getNomFichier() : "Document sans nom");
+            map.put("prenomSignataire", inv.getPrenomSignataire());
+            map.put("nomSignataire", inv.getNomSignataire());
+            map.put("emailDestinataire", inv.getEmailDestinataire());
+            map.put("telephoneSignataire", inv.getTelephoneSignataire());  // ✅ AJOUTÉ
+            map.put("dateInvitation", inv.getDateInvitation());
+            map.put("dateSignature", inv.getDateSignature());
+            map.put("statut", inv.getStatut());
+            map.put("typeSignature", inv.getTypeSignature());  // ✅ AJOUT CRUCIAL
+            map.put("type_signature", inv.getTypeSignature()); // ✅ Pour compatibilité frontend
+            
+            // ✅ Ajout des coordonnées pour l'affichage
+            map.put("coordonneeX", inv.getCoordonneeX());
+            map.put("coordonneeY", inv.getCoordonneeY());
+            map.put("pageNumber", inv.getPageNumber());
+            
+            // ✅ Ajout de l'ID du document
+            if (inv.getDocument() != null) {
+                map.put("documentId", inv.getDocument().getId());
+                map.put("documentNom", inv.getDocument().getNomFichier());
+            }
+            
+            return map;
+        }).collect(Collectors.toList());
 
-            return ResponseEntity.ok(response);
-        } catch (Exception e) {
-            return ResponseEntity.status(500).body("Erreur : " + e.getMessage());
-        }
+        return ResponseEntity.ok(response);
+    } catch (Exception e) {
+        return ResponseEntity.status(500).body("Erreur : " + e.getMessage());
     }
+}
 
     /**
      * ✅ Téléchargement spécifique (via liens externes)
