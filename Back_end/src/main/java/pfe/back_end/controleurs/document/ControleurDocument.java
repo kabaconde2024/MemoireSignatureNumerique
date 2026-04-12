@@ -1,6 +1,6 @@
 package pfe.back_end.controleurs.document;
-import org.springframework.security.access.prepost.PreAuthorize;
 
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
@@ -17,6 +17,7 @@ import pfe.back_end.repositories.sql.DocumentRepository;
 import pfe.back_end.repositories.sql.UtilisateurRepository;
 import pfe.back_end.repositories.sql.InvitationRepository;
 import pfe.back_end.services.document.ServiceGestionDocuments;
+
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -43,12 +44,8 @@ public class ControleurDocument {
     @Autowired 
     private InvitationRepository invitationRepository;
 
-    /**
-     * ✅ Upload d'un document initial (Stockage BDD)
-     * Correction : On ne renvoie qu'une Map légère pour éviter de sérialiser le binaire.
-     */
- @PostMapping("/upload")
-    @PreAuthorize("isAuthenticated()")  // ✅ Ajoutez cette ligne
+    @PostMapping("/upload")
+    @PreAuthorize("isAuthenticated()")
     public ResponseEntity<?> uploadDocument(
             @RequestParam("file") MultipartFile file,
             Authentication authentication) {
@@ -76,9 +73,6 @@ public class ControleurDocument {
         }
     }
     
-      /**
-     * ✅ Liste uniquement les documents auto-signés par l'utilisateur
-     */
     @GetMapping("/liste-signes-auto")
     @Transactional(readOnly = true)
     public ResponseEntity<?> listerDocumentsAutoSignes(Authentication auth) {
@@ -103,9 +97,6 @@ public class ControleurDocument {
         }
     }
 
-    /**
-     * ✅ Téléchargement SÉCURISÉ (Propriétaire ou Signataire)
-     */
     @GetMapping("/download/{id}")
     @Transactional(readOnly = true)
     public ResponseEntity<byte[]> telechargerDocument(@PathVariable Long id, Authentication auth) {
@@ -136,9 +127,6 @@ public class ControleurDocument {
         }
     }
 
-    /**
-     * ✅ Suppression sécurisée
-     */
     @DeleteMapping("/supprimer/{id}")
     @Transactional
     public ResponseEntity<?> supprimer(@PathVariable Long id, Authentication auth) {
@@ -157,9 +145,6 @@ public class ControleurDocument {
         }
     }
 
-    /**
-     * ✅ Liste tous les documents signés appartenant à l'utilisateur
-     */
     @GetMapping("/mes-documents-signes")
     @Transactional(readOnly = true)
     public ResponseEntity<?> getMesDocumentsSignes(Authentication auth) {
@@ -204,55 +189,54 @@ public class ControleurDocument {
         }
     }
 
-   /**
- * ✅ Liste des invitations envoyées
- */
-@GetMapping("/mes-invitations")
-@Transactional(readOnly = true)
-public ResponseEntity<?> getMesInvitations(Authentication auth) {
-    try {
-        Utilisateur me = utilisateurRepository.findByEmailIgnoreCase(auth.getName())
-                .orElseThrow(() -> new RuntimeException("Utilisateur non trouvé"));
-
-        List<InvitationSignature> list = invitationRepository.findByExpediteurOrderByDateInvitationDesc(me);
-
-        List<Map<String, Object>> response = list.stream().map(inv -> {
-            Map<String, Object> map = new HashMap<>();
-            map.put("id", inv.getId());
-            map.put("nomFichier", inv.getDocument() != null ? inv.getDocument().getNomFichier() : "Document sans nom");
-            map.put("prenomSignataire", inv.getPrenomSignataire());
-            map.put("nomSignataire", inv.getNomSignataire());
-            map.put("emailDestinataire", inv.getEmailDestinataire());
-            map.put("telephoneSignataire", inv.getTelephoneSignataire());  // ✅ AJOUTÉ
-            map.put("dateInvitation", inv.getDateInvitation());
-            map.put("dateSignature", inv.getDateSignature());
-            map.put("statut", inv.getStatut());
-            map.put("typeSignature", inv.getTypeSignature());  // ✅ AJOUT CRUCIAL
-            map.put("type_signature", inv.getTypeSignature()); // ✅ Pour compatibilité frontend
-            
-            // ✅ Ajout des coordonnées pour l'affichage
-            map.put("coordonneeX", inv.getCoordonneeX());
-            map.put("coordonneeY", inv.getCoordonneeY());
-            map.put("pageNumber", inv.getPageNumber());
-            
-            // ✅ Ajout de l'ID du document
-            if (inv.getDocument() != null) {
-                map.put("documentId", inv.getDocument().getId());
-                map.put("documentNom", inv.getDocument().getNomFichier());
-            }
-            
-            return map;
-        }).collect(Collectors.toList());
-
-        return ResponseEntity.ok(response);
-    } catch (Exception e) {
-        return ResponseEntity.status(500).body("Erreur : " + e.getMessage());
-    }
-}
-
     /**
-     * ✅ Téléchargement spécifique (via liens externes)
+     * ✅ Liste des invitations envoyées - CORRIGÉ AVEC typeSignature
      */
+    @GetMapping("/mes-invitations")
+    @Transactional(readOnly = true)
+    public ResponseEntity<?> getMesInvitations(Authentication auth) {
+        try {
+            Utilisateur me = utilisateurRepository.findByEmailIgnoreCase(auth.getName())
+                    .orElseThrow(() -> new RuntimeException("Utilisateur non trouvé"));
+
+            List<InvitationSignature> list = invitationRepository.findByExpediteurOrderByDateInvitationDesc(me);
+
+            List<Map<String, Object>> response = list.stream().map(inv -> {
+                Map<String, Object> map = new HashMap<>();
+                map.put("id", inv.getId());
+                map.put("nomFichier", inv.getDocument() != null ? inv.getDocument().getNomFichier() : "Document sans nom");
+                map.put("prenomSignataire", inv.getPrenomSignataire());
+                map.put("nomSignataire", inv.getNomSignataire());
+                map.put("emailDestinataire", inv.getEmailDestinataire());
+                map.put("telephoneSignataire", inv.getTelephoneSignataire());
+                map.put("dateInvitation", inv.getDateInvitation());
+                map.put("dateSignature", inv.getDateSignature());
+                map.put("statut", inv.getStatut());
+                
+                // ✅ AJOUT CRUCIAL - Le type de signature
+                map.put("typeSignature", inv.getTypeSignature());
+                map.put("type_signature", inv.getTypeSignature()); // Pour compatibilité
+                
+                // ✅ Coordonnées
+                map.put("coordonneeX", inv.getCoordonneeX());
+                map.put("coordonneeY", inv.getCoordonneeY());
+                map.put("pageNumber", inv.getPageNumber());
+                
+                // ✅ Document associé
+                if (inv.getDocument() != null) {
+                    map.put("documentId", inv.getDocument().getId());
+                    map.put("documentNom", inv.getDocument().getNomFichier());
+                }
+                
+                return map;
+            }).collect(Collectors.toList());
+
+            return ResponseEntity.ok(response);
+        } catch (Exception e) {
+            return ResponseEntity.status(500).body("Erreur : " + e.getMessage());
+        }
+    }
+
     @GetMapping("/download-signe/{documentId}")
     @Transactional(readOnly = true)
     public ResponseEntity<?> telechargerDocumentSigne(@PathVariable Long documentId) {
