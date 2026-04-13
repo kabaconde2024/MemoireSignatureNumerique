@@ -10,6 +10,7 @@ import org.springframework.stereotype.Service;
 import pfe.back_end.services.notification.ServiceSmsOtp;
 import pfe.back_end.services.authentification.ConvertisseurCoordonneesPdf;
 import pfe.back_end.services.timestamp.ServiceHorodatage;
+import pfe.back_end.repositories.sql.DocumentRepository;
 
 import java.io.*;
 import java.security.MessageDigest;
