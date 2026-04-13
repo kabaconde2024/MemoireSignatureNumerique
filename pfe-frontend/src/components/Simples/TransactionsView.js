@@ -3,7 +3,7 @@ import axios from 'axios';
 import { 
   Box, Typography, Table, TableBody, TableCell, TableContainer, 
   TableHead, TableRow, Paper, Chip, Stack, IconButton, Tooltip,
-  Dialog
+  Dialog, useMediaQuery, Collapse, Card, CardContent
 } from '@mui/material';
 import Description from '@mui/icons-material/Description';
 import PhoneIcon from '@mui/icons-material/Phone';
@@ -11,6 +11,8 @@ import DownloadIcon from '@mui/icons-material/GetApp';
 import VerifiedUserIcon from '@mui/icons-material/VerifiedUser';
 import SimpleIcon from '@mui/icons-material/EditNote';
 import PkiIcon from '@mui/icons-material/Security';
+import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
+import ExpandLessIcon from '@mui/icons-material/ExpandLess';
 
 import VerificationReport from './VerificationReport';
 
@@ -19,6 +21,11 @@ const TransactionsView = ({ invitations, loading }) => {
   const [openReportDialog, setOpenReportDialog] = useState(false);
   const [currentVerificationResult, setCurrentVerificationResult] = useState(null);
   const [downloading, setDownloading] = useState({});
+  const [expandedRows, setExpandedRows] = useState({});
+  
+  // Responsive detection
+  const isMobile = useMediaQuery('(max-width:600px)');
+  const isTablet = useMediaQuery('(max-width:960px)');
 
   useEffect(() => {
     if (invitations && invitations.length > 0) {
@@ -137,179 +144,477 @@ const TransactionsView = ({ invitations, loading }) => {
     return { label: 'Simple', icon: <SimpleIcon sx={{ fontSize: 14 }} />, color: 'primary', value: 'simple' };
   };
 
+  const toggleRowExpand = (rowId) => {
+    setExpandedRows(prev => ({ ...prev, [rowId]: !prev[rowId] }));
+  };
+
+  // Version mobile : carte au lieu de tableau
+  const renderMobileCard = (t, index) => {
+    const nom = t.nom_signataire || t.nomSignataire || "";
+    const prenom = t.prenom_signataire || t.prenomSignataire || "";
+    const email = t.email_destinataire || t.emailDestinataire || "N/A";
+    const telephone = t.telephone_signataire || t.telephoneSignataire || "N/A";
+    const docNom = t.nomFichier || t.documentNom || "Document PDF";
+    const docId = t.documentId;
+    const dateInvitation = t.dateInvitation;
+    const dateSignature = t.dateSignature;
+    const statutBrut = t.statut || "";
+    const estSigne = statutBrut === "SIGNE" || !!dateSignature;
+    const isDownloading = downloading[docId];
+    const isExpanded = expandedRows[index];
+    
+    const signatureType = getSignatureType(t);
+    const typeValue = signatureType.value;
+
+    return (
+      <Card key={t.id || index} sx={{ mb: 2, borderRadius: '12px', boxShadow: '0 2px 8px rgba(0,0,0,0.08)' }}>
+        <CardContent sx={{ p: 2 }}>
+          {/* En-tête de la carte */}
+          <Stack direction="row" justifyContent="space-between" alignItems="flex-start">
+            <Stack direction="row" spacing={1} alignItems="center" sx={{ flex: 1 }}>
+              <Description color="error" fontSize="small" />
+              <Typography variant="body2" fontWeight="600" sx={{ flex: 1 }}>
+                {docNom.length > 30 ? docNom.substring(0, 30) + '...' : docNom}
+              </Typography>
+            </Stack>
+            <IconButton size="small" onClick={() => toggleRowExpand(index)}>
+              {isExpanded ? <ExpandLessIcon /> : <ExpandMoreIcon />}
+            </IconButton>
+          </Stack>
+
+          {/* Informations principales */}
+          <Stack spacing={1} sx={{ mt: 1.5 }}>
+            <Stack direction="row" justifyContent="space-between" alignItems="center">
+              <Typography variant="caption" color="textSecondary">Signataire :</Typography>
+              <Typography variant="body2" fontWeight="500">
+                {`${prenom} ${nom}`.trim() || "Inconnu"}
+              </Typography>
+            </Stack>
+            
+            <Stack direction="row" justifyContent="space-between" alignItems="center">
+              <Typography variant="caption" color="textSecondary">Type :</Typography>
+              <Chip 
+                icon={signatureType.icon}
+                label={signatureType.label} 
+                size="small" 
+                color={signatureType.color} 
+                variant="outlined"
+                sx={{ height: 22, fontSize: '0.7rem' }}
+              />
+            </Stack>
+
+            <Stack direction="row" justifyContent="space-between" alignItems="center">
+              <Typography variant="caption" color="textSecondary">Email :</Typography>
+              <Typography variant="body2" sx={{ fontSize: '12px' }}>
+                {email.length > 25 ? email.substring(0, 25) + '...' : email}
+              </Typography>
+            </Stack>
+
+            {telephone !== "N/A" && (
+              <Stack direction="row" justifyContent="space-between" alignItems="center">
+                <Typography variant="caption" color="textSecondary">Téléphone :</Typography>
+                <Stack direction="row" spacing={0.5} alignItems="center">
+                  <PhoneIcon sx={{ fontSize: 12 }} />
+                  <Typography variant="caption">{telephone}</Typography>
+                </Stack>
+              </Stack>
+            )}
+
+            <Stack direction="row" justifyContent="space-between" alignItems="center">
+              <Typography variant="caption" color="textSecondary">Statut :</Typography>
+              <Chip 
+                label={estSigne ? "Signé" : "En attente"} 
+                color={estSigne ? "success" : "warning"} 
+                size="small" 
+                sx={{ fontWeight: 'bold' }}
+              />
+            </Stack>
+          </Stack>
+
+          {/* Détails expansibles */}
+          <Collapse in={isExpanded} timeout="auto" unmountOnExit>
+            <Stack spacing={1.5} sx={{ mt: 2, pt: 1, borderTop: '1px solid #e0e0e0' }}>
+              <Stack direction="row" justifyContent="space-between">
+                <Typography variant="caption" color="textSecondary">Date invitation :</Typography>
+                <Typography variant="body2" sx={{ fontSize: '12px' }}>
+                  {formatDate(dateInvitation)}
+                </Typography>
+              </Stack>
+              
+              <Stack direction="row" justifyContent="space-between">
+                <Typography variant="caption" color="textSecondary">Date signature :</Typography>
+                <Typography 
+                  variant="body2" 
+                  sx={{ 
+                    color: dateSignature ? 'success.main' : 'text.disabled', 
+                    fontWeight: dateSignature ? 600 : 400,
+                    fontSize: '12px'
+                  }}
+                >
+                  {formatDate(dateSignature)}
+                </Typography>
+              </Stack>
+
+              {/* Actions */}
+              {estSigne && docId && (
+                <Stack direction="row" spacing={1} justifyContent="flex-end" sx={{ mt: 1 }}>
+                  <Tooltip title={`Télécharger le document signé (${signatureType.label})`}>
+                    <IconButton 
+                      size="small" 
+                      color="primary" 
+                      onClick={() => handleDownload(docId, docNom, typeValue)}
+                      disabled={isDownloading}
+                    >
+                      <DownloadIcon fontSize="small" />
+                    </IconButton>
+                  </Tooltip>
+                  
+                  {typeValue === 'pki' && (
+                    <Tooltip title="Vérifier la signature numérique PKI">
+                      <IconButton 
+                        size="small" 
+                        color="success" 
+                        onClick={() => verifierSignature(docId, docNom, typeValue)}
+                      >
+                        <VerifiedUserIcon fontSize="small" />
+                      </IconButton>
+                    </Tooltip>
+                  )}
+                </Stack>
+              )}
+            </Stack>
+          </Collapse>
+        </CardContent>
+      </Card>
+    );
+  };
+
+  // Version tablette : tableau simplifié
+  const renderTabletTable = () => (
+    <TableContainer component={Paper} elevation={0} sx={{ border: '1px solid #E2E8F0', borderRadius: '15px', overflowX: 'auto' }}>
+      <Table sx={{ minWidth: 650 }}>
+        <TableHead sx={{ bgcolor: '#f8f9fa' }}>
+          <TableRow>
+            <TableCell><b>DOCUMENT / SIGNATAIRE</b></TableCell>
+            <TableCell><b>TYPE</b></TableCell>
+            <TableCell><b>DATE INVITATION</b></TableCell>
+            <TableCell><b>DATE SIGNATURE</b></TableCell>
+            <TableCell align="center"><b>STATUT / ACTIONS</b></TableCell>
+          </TableRow>
+        </TableHead>
+        <TableBody>
+          {loading ? (
+            <TableRow><TableCell colSpan={5} align="center">Chargement...</TableCell></TableRow>
+          ) : !invitations || invitations.length === 0 ? (
+            <TableRow><TableCell colSpan={5} align="center">Aucune transaction trouvée.</TableCell></TableRow>
+          ) : (
+            invitations.map((t, index) => {
+              const nom = t.nom_signataire || t.nomSignataire || "";
+              const prenom = t.prenom_signataire || t.prenomSignataire || "";
+              const docNom = t.nomFichier || t.documentNom || "Document PDF";
+              const docId = t.documentId;
+              const dateInvitation = t.dateInvitation;
+              const dateSignature = t.dateSignature;
+              const estSigne = (t.statut || "") === "SIGNE" || !!dateSignature;
+              const isDownloading = downloading[docId];
+              
+              const signatureType = getSignatureType(t);
+              const typeValue = signatureType.value;
+
+              return (
+                <TableRow key={t.id || index} hover>
+                  <TableCell>
+                    <Stack direction="row" spacing={1} alignItems="center">
+                      <Description color="error" fontSize="small" />
+                      <Box>
+                        <Typography variant="body2" fontWeight="600">{docNom}</Typography>
+                        <Typography variant="caption" color="textSecondary">
+                          {`${prenom} ${nom}`.trim() || "Inconnu"}
+                        </Typography>
+                      </Box>
+                    </Stack>
+                  </TableCell>
+
+                  <TableCell>
+                    <Chip 
+                      icon={signatureType.icon}
+                      label={signatureType.label} 
+                      size="small" 
+                      color={signatureType.color} 
+                      variant="outlined"
+                      sx={{ height: 22, fontSize: '0.7rem' }}
+                    />
+                  </TableCell>
+
+                  <TableCell>
+                    <Typography variant="body2" sx={{ fontSize: '12px' }}>
+                      {formatDate(dateInvitation)}
+                    </Typography>
+                  </TableCell>
+
+                  <TableCell>
+                    <Typography 
+                      variant="body2" 
+                      sx={{ 
+                        color: dateSignature ? 'success.main' : 'text.disabled', 
+                        fontWeight: dateSignature ? 600 : 400,
+                        fontSize: '12px'
+                      }}
+                    >
+                      {formatDate(dateSignature)}
+                    </Typography>
+                  </TableCell>
+
+                  <TableCell align="center">
+                    <Stack direction="row" spacing={1} justifyContent="center" alignItems="center">
+                      <Chip 
+                        label={estSigne ? "Signé" : "En attente"} 
+                        color={estSigne ? "success" : "warning"} 
+                        size="small" 
+                        sx={{ fontWeight: 'bold' }}
+                      />
+                      {estSigne && docId && (
+                        <>
+                          <Tooltip title={`Télécharger (${signatureType.label})`}>
+                            <IconButton 
+                              size="small" 
+                              color="primary" 
+                              onClick={() => handleDownload(docId, docNom, typeValue)}
+                              disabled={isDownloading}
+                            >
+                              <DownloadIcon fontSize="small" />
+                            </IconButton>
+                          </Tooltip>
+                          
+                          {typeValue === 'pki' && (
+                            <Tooltip title="Vérifier PKI">
+                              <IconButton 
+                                size="small" 
+                                color="success" 
+                                onClick={() => verifierSignature(docId, docNom, typeValue)}
+                              >
+                                <VerifiedUserIcon fontSize="small" />
+                              </IconButton>
+                            </Tooltip>
+                          )}
+                        </>
+                      )}
+                    </Stack>
+                  </TableCell>
+                </TableRow>
+              );
+            })
+          )}
+        </TableBody>
+      </Table>
+    </TableContainer>
+  );
+
+  // Version desktop : tableau complet
+  const renderDesktopTable = () => (
+    <TableContainer component={Paper} elevation={0} sx={{ border: '1px solid #E2E8F0', borderRadius: '15px', overflowX: 'auto' }}>
+      <Table sx={{ minWidth: 900 }}>
+        <TableHead sx={{ bgcolor: '#f8f9fa' }}>
+          <TableRow>
+            <TableCell><b>DOCUMENT</b></TableCell>
+            <TableCell><b>SIGNATAIRE / TYPE</b></TableCell>
+            <TableCell><b>CONTACT</b></TableCell>
+            <TableCell><b>DATE INVITATION</b></TableCell>
+            <TableCell><b>DATE SIGNATURE</b></TableCell>
+            <TableCell align="center"><b>STATUT / ACTIONS</b></TableCell>
+          </TableRow>
+        </TableHead>
+        <TableBody>
+          {loading ? (
+            <TableRow><TableCell colSpan={6} align="center">Chargement...</TableCell></TableRow>
+          ) : !invitations || invitations.length === 0 ? (
+            <TableRow><TableCell colSpan={6} align="center">Aucune transaction trouvée.</TableCell></TableRow>
+          ) : (
+            invitations.map((t, index) => {
+              const nom = t.nom_signataire || t.nomSignataire || "";
+              const prenom = t.prenom_signataire || t.prenomSignataire || "";
+              const email = t.email_destinataire || t.emailDestinataire || "N/A";
+              const telephone = t.telephone_signataire || t.telephoneSignataire || "N/A";
+              const docNom = t.nomFichier || t.documentNom || "Document PDF";
+              const docId = t.documentId;
+              const dateInvitation = t.dateInvitation;
+              const dateSignature = t.dateSignature;
+              const statutBrut = t.statut || "";
+              const estSigne = statutBrut === "SIGNE" || !!dateSignature;
+              const isDownloading = downloading[docId];
+              
+              const signatureType = getSignatureType(t);
+              const typeValue = signatureType.value;
+
+              return (
+                <TableRow key={t.id || index} hover>
+                  <TableCell>
+                    <Stack direction="row" spacing={1} alignItems="center">
+                      <Description color="error" fontSize="small" />
+                      <Typography variant="body2" fontWeight="600">{docNom}</Typography>
+                    </Stack>
+                  </TableCell>
+
+                  <TableCell>
+                    <Typography variant="body2">{`${prenom} ${nom}`.trim() || "Inconnu"}</Typography>
+                    <Chip 
+                      icon={signatureType.icon}
+                      label={signatureType.label} 
+                      size="small" 
+                      color={signatureType.color} 
+                      variant="outlined"
+                      sx={{ mt: 0.5, height: 22, fontSize: '0.7rem' }}
+                    />
+                  </TableCell>
+
+                  <TableCell>
+                    <Typography variant="body2" sx={{ color: '#0b1e39' }}>{email}</Typography>
+                    {telephone !== "N/A" && (
+                      <Stack direction="row" spacing={0.5} alignItems="center" sx={{ color: 'text.secondary', mt: 0.5 }}>
+                        <PhoneIcon sx={{ fontSize: 14 }} />
+                        <Typography variant="caption">{telephone}</Typography>
+                      </Stack>
+                    )}
+                  </TableCell>
+
+                  <TableCell>
+                    <Typography variant="body2" sx={{ whiteSpace: 'nowrap' }}>
+                      {formatDate(dateInvitation)}
+                    </Typography>
+                  </TableCell>
+
+                  <TableCell>
+                    <Typography 
+                      variant="body2" 
+                      sx={{ 
+                        color: dateSignature ? 'success.main' : 'text.disabled', 
+                        fontWeight: dateSignature ? 600 : 400,
+                        whiteSpace: 'nowrap'
+                      }}
+                    >
+                      {formatDate(dateSignature)}
+                    </Typography>
+                  </TableCell>
+
+                  <TableCell align="center">
+                    <Stack direction="row" spacing={1} justifyContent="center" alignItems="center">
+                      <Chip 
+                        label={estSigne ? "Signé" : "En attente"} 
+                        color={estSigne ? "success" : "warning"} 
+                        size="small" 
+                        sx={{ fontWeight: 'bold', minWidth: '95px' }}
+                      />
+                      {estSigne && docId && (
+                        <>
+                          <Tooltip title={`Télécharger le document signé (${signatureType.label})`}>
+                            <IconButton 
+                              size="small" 
+                              color="primary" 
+                              onClick={() => handleDownload(docId, docNom, typeValue)}
+                              disabled={isDownloading}
+                            >
+                              <DownloadIcon fontSize="small" />
+                            </IconButton>
+                          </Tooltip>
+                          
+                          {typeValue === 'pki' && (
+                            <Tooltip title="Vérifier la signature numérique PKI">
+                              <IconButton 
+                                size="small" 
+                                color="success" 
+                                onClick={() => verifierSignature(docId, docNom, typeValue)}
+                              >
+                                <VerifiedUserIcon fontSize="small" />
+                              </IconButton>
+                            </Tooltip>
+                          )}
+                        </>
+                      )}
+                    </Stack>
+                  </TableCell>
+                </TableRow>
+              );
+            })
+          )}
+        </TableBody>
+      </Table>
+    </TableContainer>
+  );
+
+  // Sélection du rendu en fonction de la taille d'écran
+  const renderContent = () => {
+    if (isMobile) {
+      if (loading) return <Typography textAlign="center">Chargement...</Typography>;
+      if (!invitations || invitations.length === 0) {
+        return <Typography textAlign="center">Aucune transaction trouvée.</Typography>;
+      }
+      return invitations.map((t, index) => renderMobileCard(t, index));
+    }
+    
+    if (isTablet) {
+      return renderTabletTable();
+    }
+    
+    return renderDesktopTable();
+  };
+
   return (
-    <Box sx={{ maxWidth: '1300px', mx: 'auto', width: '100%' }}>
-      <Typography variant="h5" fontWeight="800" sx={{ mb: 4, color: '#0b1e39' }}>
+    <Box sx={{ maxWidth: '1300px', mx: 'auto', width: '100%', px: { xs: 1, sm: 2, md: 0 } }}>
+      <Typography 
+        variant={isMobile ? "h6" : "h5"} 
+        fontWeight="800" 
+        sx={{ mb: isMobile ? 2 : 4, color: '#0b1e39' }}
+      >
         Historique des Transactions
       </Typography>
       
-      <TableContainer component={Paper} elevation={0} sx={{ border: '1px solid #E2E8F0', borderRadius: '15px' }}>
-        <Table>
-          <TableHead sx={{ bgcolor: '#f8f9fa' }}>
-            <TableRow>
-              <TableCell><b>DOCUMENT</b></TableCell>
-              <TableCell><b>SIGNATAIRE / TYPE</b></TableCell>
-              <TableCell><b>CONTACT</b></TableCell>
-              <TableCell><b>DATE INVITATION</b></TableCell>
-              <TableCell><b>DATE SIGNATURE</b></TableCell>
-              <TableCell align="center"><b>STATUT / ACTIONS</b></TableCell>
-            </TableRow>
-          </TableHead>
-          <TableBody>
-            {loading ? (
-              <TableRow><TableCell colSpan={6} align="center">Chargement...</TableCell></TableRow>
-            ) : !invitations || invitations.length === 0 ? (
-              <TableRow><TableCell colSpan={6} align="center">Aucune transaction trouvée.</TableCell></TableRow>
-            ) : (
-              invitations.map((t, index) => {
-                const nom = t.nom_signataire || t.nomSignataire || "";
-                const prenom = t.prenom_signataire || t.prenomSignataire || "";
-                const email = t.email_destinataire || t.emailDestinataire || "N/A";
-                const telephone = t.telephone_signataire || t.telephoneSignataire || "N/A";
-                const docNom = t.nomFichier || t.documentNom || "Document PDF";
-                const docId = t.documentId;
-                const dateInvitation = t.dateInvitation;
-                const dateSignature = t.dateSignature;
-                const statutBrut = t.statut || "";
-                const estSigne = statutBrut === "SIGNE" || !!dateSignature;
-                const isDownloading = downloading[docId];
-                
-                const signatureType = getSignatureType(t);
-                const typeValue = signatureType.value;
-
-                return (
-                  <TableRow key={t.id || index} hover>
-                    <TableCell>
-                      <Stack direction="row" spacing={1} alignItems="center">
-                        <Description color="error" fontSize="small" />
-                        <Typography variant="body2" fontWeight="600">{docNom}</Typography>
-                      </Stack>
-                    </TableCell>
-
-                    <TableCell>
-                      <Typography variant="body2">{`${prenom} ${nom}`.trim() || "Inconnu"}</Typography>
-                      <Chip 
-                        icon={signatureType.icon}
-                        label={signatureType.label} 
-                        size="small" 
-                        color={signatureType.color} 
-                        variant="outlined"
-                        sx={{ mt: 0.5, height: 22, fontSize: '0.7rem' }}
-                      />
-                    </TableCell>
-
-                    <TableCell>
-                      <Typography variant="body2" sx={{ color: '#0b1e39' }}>{email}</Typography>
-                      {telephone !== "N/A" && (
-                        <Stack direction="row" spacing={0.5} alignItems="center" sx={{ color: 'text.secondary', mt: 0.5 }}>
-                          <PhoneIcon sx={{ fontSize: 14 }} />
-                          <Typography variant="caption">{telephone}</Typography>
-                        </Stack>
-                      )}
-                    </TableCell>
-
-                    <TableCell>
-                      <Typography variant="body2" sx={{ whiteSpace: 'nowrap' }}>
-                        {formatDate(dateInvitation)}
-                      </Typography>
-                    </TableCell>
-
-                    <TableCell>
-                      <Typography 
-                        variant="body2" 
-                        sx={{ 
-                          color: dateSignature ? 'success.main' : 'text.disabled', 
-                          fontWeight: dateSignature ? 600 : 400,
-                          whiteSpace: 'nowrap'
-                        }}
-                      >
-                        {formatDate(dateSignature)}
-                      </Typography>
-                    </TableCell>
-
-                    <TableCell align="center">
-                      <Stack direction="row" spacing={1} justifyContent="center" alignItems="center">
-                        <Chip 
-                          label={estSigne ? "Signé" : "En attente"} 
-                          color={estSigne ? "success" : "warning"} 
-                          size="small" 
-                          sx={{ fontWeight: 'bold', minWidth: '95px' }}
-                        />
-                        {estSigne && docId && (
-                          <>
-                            <Tooltip title={`Télécharger le document signé (${signatureType.label})`}>
-                              <IconButton 
-                                size="small" 
-                                color="primary" 
-                                onClick={() => handleDownload(docId, docNom, typeValue)}
-                                disabled={isDownloading}
-                              >
-                                <DownloadIcon fontSize="small" />
-                              </IconButton>
-                            </Tooltip>
-                            
-                            {/* ✅ Bouton de vérification UNIQUEMENT pour PKI */}
-                            {typeValue === 'pki' && (
-                              <Tooltip title="Vérifier la signature numérique PKI">
-                                <IconButton 
-                                  size="small" 
-                                  color="success" 
-                                  onClick={() => verifierSignature(docId, docNom, typeValue)}
-                                >
-                                  <VerifiedUserIcon fontSize="small" />
-                                </IconButton>
-                              </Tooltip>
-                            )}
-                          </>
-                        )}
-                      </Stack>
-                    </TableCell>
-                  </TableRow>
-                );
-              })
-            )}
-          </TableBody>
-        </Table>
-      </TableContainer>
+      {renderContent()}
 
       {/* Légende des types de signature */}
       <Paper 
         elevation={0} 
         sx={{ 
-          mt: 3, 
-          p: 2, 
+          mt: isMobile ? 2 : 3, 
+          p: isMobile ? 1.5 : 2, 
           bgcolor: '#f8f9fa', 
           borderRadius: '12px',
           border: '1px solid #E2E8F0'
         }}
       >
-        <Stack direction="row" spacing={3} alignItems="center" flexWrap="wrap">
+        <Stack 
+          direction={isMobile ? "column" : "row"} 
+          spacing={isMobile ? 2 : 3} 
+          alignItems={isMobile ? "flex-start" : "center"}
+          flexWrap="wrap"
+        >
           <Typography variant="caption" sx={{ fontWeight: 600, color: '#0b1e39' }}>
             Types de signature :
           </Typography>
-          <Stack direction="row" spacing={1} alignItems="center">
-            <Chip 
-              icon={<SimpleIcon sx={{ fontSize: 14 }} />}
-              label="Signature Simple" 
-              size="small" 
-              color="primary" 
-              variant="outlined"
-            />
-            <Typography variant="caption" color="textSecondary">
-              Signature électronique simple avec OTP
-            </Typography>
-          </Stack>
-          <Stack direction="row" spacing={1} alignItems="center">
-            <Chip 
-              icon={<PkiIcon sx={{ fontSize: 14 }} />}
-              label="Signature PKI" 
-              size="small" 
-              color="success" 
-              variant="outlined"
-            />
-            <Typography variant="caption" color="textSecondary">
-              Signature avec certificat numérique (qualifiée)
-            </Typography>
+          <Stack direction="row" spacing={2} alignItems="center" flexWrap="wrap" gap={1}>
+            <Stack direction="row" spacing={1} alignItems="center">
+              <Chip 
+                icon={<SimpleIcon sx={{ fontSize: 14 }} />}
+                label="Signature Simple" 
+                size="small" 
+                color="primary" 
+                variant="outlined"
+              />
+              <Typography variant="caption" color="textSecondary" sx={{ fontSize: isMobile ? '10px' : '12px' }}>
+                Signature électronique simple avec OTP
+              </Typography>
+            </Stack>
+            <Stack direction="row" spacing={1} alignItems="center">
+              <Chip 
+                icon={<PkiIcon sx={{ fontSize: 14 }} />}
+                label="Signature PKI" 
+                size="small" 
+                color="success" 
+                variant="outlined"
+              />
+              <Typography variant="caption" color="textSecondary" sx={{ fontSize: isMobile ? '10px' : '12px' }}>
+                Signature avec certificat numérique (qualifiée)
+              </Typography>
+            </Stack>
           </Stack>
         </Stack>
       </Paper>
@@ -319,6 +624,12 @@ const TransactionsView = ({ invitations, loading }) => {
         onClose={() => setOpenReportDialog(false)}
         maxWidth="md"
         fullWidth
+        PaperProps={{
+          sx: {
+            margin: isMobile ? '16px' : '32px',
+            width: isMobile ? 'calc(100% - 32px)' : 'auto'
+          }
+        }}
       >
         <VerificationReport 
           verificationResult={currentVerificationResult}

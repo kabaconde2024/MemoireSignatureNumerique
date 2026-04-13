@@ -1,7 +1,11 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import axios from 'axios';
 import { useDropzone } from 'react-dropzone';
-import { Box, CssBaseline, Snackbar, Alert } from '@mui/material';
+import { 
+  Box, CssBaseline, Snackbar, Alert, useMediaQuery, 
+  Drawer, IconButton, AppBar, Toolbar, Typography 
+} from '@mui/material';
+import MenuIcon from '@mui/icons-material/Menu';
 
 // Composants externalisés (dashboard)
 import Sidebar from '../components/dashboard/Sidebar';
@@ -30,6 +34,11 @@ const UserDashboard = () => {
   const [transactions, setTransactions] = useState([]);
   const [loadingTransactions, setLoadingTransactions] = useState(false);
   const [passwordData, setPasswordData] = useState({ oldPassword: '', newPassword: '', confirmPassword: '' });
+  
+  // Responsive states
+  const isMobile = useMediaQuery('(max-width:600px)');
+  const isTablet = useMediaQuery('(max-width:960px)');
+  const [mobileOpen, setMobileOpen] = useState(false);
 
   useEffect(() => { fetchUserProfile(); }, []);
   useEffect(() => { if (view === 'transactions') fetchTransactions(); }, [view]);
@@ -51,7 +60,6 @@ const UserDashboard = () => {
     } finally { setLoadingTransactions(false); }
   };
 
-  // NOUVELLE FONCTION : Permet à l'expéditeur de voir le fichier chargé avant l'envoi
   const handlePreviewDocument = () => {
     if (uploadedFiles.length > 0) {
       const fileURL = URL.createObjectURL(uploadedFiles[0]);
@@ -86,10 +94,8 @@ const UserDashboard = () => {
     }
   };
 
-  // CORRECTION : Déclenche l'envoi immédiat après vérification optionnelle
   const handleLaunchPad = async (signataire, signatureType) => {
     if (uploadedFiles.length > 0) {
-      // Coordonnées 0,0 car le placement n'est plus géré par l'expéditeur ici
       const defaultPosition = { x: 0, y: 0, page: 1 };
       await handleFinalConfirm(defaultPosition, signataire, signatureType);
     } else {
@@ -129,6 +135,7 @@ const UserDashboard = () => {
       setStep(1);
       setUploadedFiles([]);
       setAddedSignataires([]);
+      if (isMobile) setMobileOpen(false);
     } catch (error) {
       setSnackbar({ open: true, message: "Erreur lors de l'envoi de l'invitation.", severity: 'error' });
     }
@@ -140,23 +147,65 @@ const UserDashboard = () => {
 
   const { getRootProps, getInputProps, isDragActive, open } = useDropzone({ onDrop, noClick: true });
 
+  const handleDrawerToggle = () => {
+    setMobileOpen(!mobileOpen);
+  };
+
   return (
     <Box sx={{ display: 'flex', bgcolor: '#f4f7f9', minHeight: '100vh' }}>
       <CssBaseline />
       
+      {/* Mobile App Bar */}
+      {isMobile && (
+        <AppBar position="fixed" sx={{ zIndex: (theme) => theme.zIndex.drawer + 1, bgcolor: '#1a237e' }}>
+          <Toolbar>
+            <IconButton
+              color="inherit"
+              aria-label="open drawer"
+              edge="start"
+              onClick={handleDrawerToggle}
+              sx={{ mr: 2 }}
+            >
+              <MenuIcon />
+            </IconButton>
+            <Typography variant="h6" noWrap component="div" sx={{ flexGrow: 1 }}>
+              TrustSign
+            </Typography>
+            <Header setView={setView} userData={userData} isMobile={isMobile} />
+          </Toolbar>
+        </AppBar>
+      )}
+
+      {/* Sidebar with responsive drawer */}
       <Sidebar 
         view={view} 
-        setView={setView} 
+        setView={(newView) => {
+          setView(newView);
+          if (isMobile) setMobileOpen(false);
+        }} 
         openAutoSig={openAutoSig} 
         setOpenAutoSig={setOpenAutoSig} 
         openProfile={openProfile} 
         setOpenProfile={setOpenProfile} 
+        mobileOpen={mobileOpen}
+        handleDrawerToggle={handleDrawerToggle}
+        isMobile={isMobile}
       />
       
-      <Box component="main" sx={{ flexGrow: 1 }}>
-        <Header setView={setView} userData={userData} />
+      <Box 
+        component="main" 
+        sx={{ 
+          flexGrow: 1, 
+          width: { xs: '100%', sm: `calc(100% - ${isMobile ? 0 : 240}px)` },
+          mt: { xs: '64px', sm: 0 }
+        }}
+      >
+        {!isMobile && <Header setView={setView} userData={userData} isMobile={isMobile} />}
         
-        <Box sx={{ p: 4 }}>
+        <Box sx={{ 
+          p: { xs: 2, sm: 3, md: 4 },
+          pt: { xs: 2, sm: 3 }
+        }}>
           {view === 'signatures' && (
             <>
               {step === 1 && (
@@ -168,23 +217,29 @@ const UserDashboard = () => {
                   uploadedFiles={uploadedFiles} 
                   removeFile={(i) => setUploadedFiles(uploadedFiles.filter((_, idx) => idx !== i))} 
                   nextStep={() => setStep(2)} 
+                  isMobile={isMobile}
                 />
               )}
               {step === 2 && (
                 <StepConfig 
                   prevStep={() => setStep(1)} 
                   onLaunchPad={handleLaunchPad} 
-                  onPreview={handlePreviewDocument} // On passe la fonction de prévisualisation
+                  onPreview={handlePreviewDocument}
                   setSnackbar={setSnackbar} 
                   addedSignataires={addedSignataires} 
                   setAddedSignataires={setAddedSignataires} 
+                  isMobile={isMobile}
                 />
               )}
             </>
           )}
 
           {view === 'transactions' && (
-            <TransactionsView invitations={transactions} loading={loadingTransactions} />
+            <TransactionsView 
+              invitations={transactions} 
+              loading={loadingTransactions} 
+              isMobile={isMobile} 
+            />
           )}
 
           {view === 'certificat' && (
@@ -192,18 +247,20 @@ const UserDashboard = () => {
               currentStatus={userData.status_pki || userData.statut}
               onStatusRefresh={fetchUserProfile} 
               setSnackbar={setSnackbar} 
+              isMobile={isMobile}
             />
           )}
 
           {view === 'mes-informations' && (
-              <ProfileView 
-                  userData={userData} 
-                  setUserData={setUserData} 
-                  isEditing={isEditing} 
-                  setIsEditing={setIsEditing} 
-                  handleUpdateProfil={handleUpdateProfil} 
-                  setSnackbar={setSnackbar}
-              />
+            <ProfileView 
+              userData={userData} 
+              setUserData={setUserData} 
+              isEditing={isEditing} 
+              setIsEditing={setIsEditing} 
+              handleUpdateProfil={handleUpdateProfil} 
+              setSnackbar={setSnackbar}
+              isMobile={isMobile}
+            />
           )}
 
           {view === 'securite' && (
@@ -211,28 +268,43 @@ const UserDashboard = () => {
               passwordData={passwordData} 
               setPasswordData={setPasswordData} 
               handleChangePassword={handleChangePassword} 
+              isMobile={isMobile}
             />
           )}
           
           {view === 'ma-signature' && (
-              <SignatureView 
-                  setSnackbar={setSnackbar}
-                  onSignatureSaved={() => { fetchUserProfile(); }}
-              />
+            <SignatureView 
+              setSnackbar={setSnackbar}
+              onSignatureSaved={() => { fetchUserProfile(); }}
+              isMobile={isMobile}
+            />
           )}
 
           {view === 'auto-signature' && (
-            <AutoSignatureDocument setSnackbar={setSnackbar} />
+            <AutoSignatureDocument 
+              setSnackbar={setSnackbar} 
+              isMobile={isMobile} 
+            />
           )}
           
           {view === 'liste-auto-signe' && (
-            <ListeDocumentsAutoSigne setSnackbar={setSnackbar} />
+            <ListeDocumentsAutoSigne 
+              setSnackbar={setSnackbar} 
+              isMobile={isMobile} 
+            />
           )}
         </Box>
       </Box>
 
-      <Snackbar open={snackbar.open} autoHideDuration={4000} onClose={() => setSnackbar({...snackbar, open: false})}>
-        <Alert severity={snackbar.severity} variant="filled">{snackbar.message}</Alert>
+      <Snackbar 
+        open={snackbar.open} 
+        autoHideDuration={4000} 
+        onClose={() => setSnackbar({...snackbar, open: false})}
+        anchorOrigin={{ vertical: 'bottom', horizontal: isMobile ? 'center' : 'left' }}
+      >
+        <Alert severity={snackbar.severity} variant="filled">
+          {snackbar.message}
+        </Alert>
       </Snackbar>
     </Box>
   );

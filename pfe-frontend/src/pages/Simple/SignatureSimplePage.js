@@ -41,20 +41,32 @@ const SignatureSimplePage = () => {
     const [showPositionSelector, setShowPositionSelector] = useState(false);
     const [showSuccessModal, setShowSuccessModal] = useState(false);
     const [downloadedFileName, setDownloadedFileName] = useState('');
+    
+    // Responsive states
+    const [isMobile, setIsMobile] = useState(window.innerWidth <= 768);
+    const [isTablet, setIsTablet] = useState(window.innerWidth <= 1024 && window.innerWidth > 768);
 
-    const defaultLayoutPluginInstance = defaultLayoutPlugin();
+    useEffect(() => {
+        const handleResize = () => {
+            setIsMobile(window.innerWidth <= 768);
+            setIsTablet(window.innerWidth <= 1024 && window.innerWidth > 768);
+        };
+        
+        window.addEventListener('resize', handleResize);
+        return () => window.removeEventListener('resize', handleResize);
+    }, []);
 
     const textToImage = (text) => {
         return new Promise((resolve) => {
             const canvas = document.createElement('canvas');
             const ctx = canvas.getContext('2d');
-            canvas.width = 300;
-            canvas.height = 100;
+            canvas.width = isMobile ? 200 : 300;
+            canvas.height = isMobile ? 70 : 100;
             ctx.fillStyle = 'white';
             ctx.fillRect(0, 0, canvas.width, canvas.height);
-            ctx.font = '30px "Dancing Script", cursive';
+            ctx.font = isMobile ? '20px "Dancing Script", cursive' : '30px "Dancing Script", cursive';
             ctx.fillStyle = 'black';
-            ctx.fillText(text, 10, 60);
+            ctx.fillText(text, 10, isMobile ? 40 : 60);
             resolve(canvas.toDataURL('image/png'));
         });
     };
@@ -150,23 +162,23 @@ const SignatureSimplePage = () => {
         setShowPositionSelector(false);
     };
 
-const handleSendOtp = async () => {
-    if (!invitation?.emailDestinataire) { // Vérifie l'email au lieu du téléphone
-        alert("Adresse email non trouvée");
-        return;
-    }
-    
-    try {
-        setLoading(true);
-        await axios.post(`https://memoiresignaturenumerique.onrender.com/api/signature/send-otp?token=${token}`);
-        setIsOtpSent(true);
-        alert(`✅ Code de sécurité envoyé à : ${invitation.emailDestinataire}`);
-    } catch (err) {
-        alert("❌ Erreur lors de l'envoi de l'email.");
-    } finally {
-        setLoading(false);
-    }
-};
+    const handleSendOtp = async () => {
+        if (!invitation?.emailDestinataire) {
+            alert("Adresse email non trouvée");
+            return;
+        }
+        
+        try {
+            setLoading(true);
+            await axios.post(`https://memoiresignaturenumerique.onrender.com/api/signature/send-otp?token=${token}`);
+            setIsOtpSent(true);
+            alert(`✅ Code de sécurité envoyé à : ${invitation.emailDestinataire}`);
+        } catch (err) {
+            alert("❌ Erreur lors de l'envoi de l'email.");
+        } finally {
+            setLoading(false);
+        }
+    };
 
     const downloadFile = (blob, fileName) => {
         const url = window.URL.createObjectURL(blob);
@@ -246,8 +258,7 @@ const handleSendOtp = async () => {
                 token: token,
                 otp: otp,
                 nom: signatureText,
-              //  telephone: invitation.telephone,
-                email: invitation.emailDestinataire, // <--- Utilise l'email comme identifiant
+                email: invitation.emailDestinataire,
                 x: selectedPosition.x,
                 y: selectedPosition.y,
                 pageNumber: selectedPosition.pageNumber,
@@ -318,38 +329,97 @@ const handleSendOtp = async () => {
 
     const isSignButtonDisabled = loading;
 
+    // Styles responsives
+    const bannerStyles = {
+        backgroundColor: 'white',
+        padding: isMobile ? '10px 15px' : '10px 40px',
+        borderBottom: '1px solid #ddd',
+        display: 'flex',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        flexWrap: 'wrap',
+        gap: isMobile ? '10px' : '0'
+    };
+
+    const logoStyles = {
+        height: isMobile ? '25px' : '35px'
+    };
+
+    const infoTextStyles = {
+        fontSize: isMobile ? '10px' : '13px',
+        textAlign: isMobile ? 'left' : 'right'
+    };
+
+    const mainContainerStyles = {
+        display: 'flex',
+        flex: 1,
+        overflow: 'hidden',
+        flexDirection: isMobile ? 'column' : 'row'
+    };
+
+    const pdfContainerStyles = {
+        flex: isMobile ? '1' : '2.5',
+        backgroundColor: '#525659',
+        padding: isMobile ? '10px' : '20px',
+        overflowY: 'auto',
+        cursor: showPositionSelector ? 'crosshair' : 'default',
+        minHeight: isMobile ? '400px' : 'auto'
+    };
+
+    const signaturePanelStyles = {
+        flex: isMobile ? '1' : '1',
+        backgroundColor: 'white',
+        borderLeft: isMobile ? 'none' : '1px solid #ddd',
+        borderTop: isMobile ? '1px solid #ddd' : 'none',
+        display: 'flex',
+        flexDirection: 'column',
+        padding: isMobile ? '15px' : '25px',
+        overflowY: 'auto',
+        maxHeight: isMobile ? '60vh' : 'auto'
+    };
+
+    const titleStyles = {
+        fontSize: isMobile ? '18px' : '24px',
+        marginBottom: '15px'
+    };
+
+    const successModalStyles = {
+        position: 'fixed',
+        top: 0,
+        left: 0,
+        right: 0,
+        bottom: 0,
+        backgroundColor: 'rgba(0, 0, 0, 0.5)',
+        display: 'flex',
+        justifyContent: 'center',
+        alignItems: 'center',
+        zIndex: 9999,
+        padding: isMobile ? '20px' : '0'
+    };
+
+    const modalContentStyles = {
+        backgroundColor: 'white',
+        borderRadius: '12px',
+        padding: isMobile ? '20px' : '30px',
+        maxWidth: isMobile ? '90%' : '400px',
+        textAlign: 'center',
+        boxShadow: '0 4px 20px rgba(0,0,0,0.2)',
+        animation: 'fadeIn 0.3s ease'
+    };
+
     return (
         <div style={{ display: 'flex', flexDirection: 'column', height: '100vh', backgroundColor: '#f4f7f9' }}>
             
             {/* Modal de succès */}
             {showSuccessModal && (
-                <div style={{
-                    position: 'fixed',
-                    top: 0,
-                    left: 0,
-                    right: 0,
-                    bottom: 0,
-                    backgroundColor: 'rgba(0, 0, 0, 0.5)',
-                    display: 'flex',
-                    justifyContent: 'center',
-                    alignItems: 'center',
-                    zIndex: 9999
-                }}>
-                    <div style={{
-                        backgroundColor: 'white',
-                        borderRadius: '12px',
-                        padding: '30px',
-                        maxWidth: '400px',
-                        textAlign: 'center',
-                        boxShadow: '0 4px 20px rgba(0,0,0,0.2)',
-                        animation: 'fadeIn 0.3s ease'
-                    }}>
-                        <div style={{ fontSize: '50px', marginBottom: '15px' }}>✅</div>
-                        <h2 style={{ color: '#28a745', marginBottom: '10px' }}>Signature réussie !</h2>
-                        <p style={{ marginBottom: '15px', color: '#666' }}>
+                <div style={successModalStyles}>
+                    <div style={modalContentStyles}>
+                        <div style={{ fontSize: isMobile ? '40px' : '50px', marginBottom: '15px' }}>✅</div>
+                        <h2 style={{ color: '#28a745', marginBottom: '10px', fontSize: isMobile ? '20px' : '24px' }}>Signature réussie !</h2>
+                        <p style={{ marginBottom: '15px', color: '#666', fontSize: isMobile ? '12px' : '14px' }}>
                             Le document <strong>{downloadedFileName}</strong> a été signé avec succès.
                         </p>
-                        <p style={{ marginBottom: '20px', fontSize: '14px', color: '#888' }}>
+                        <p style={{ marginBottom: '20px', fontSize: isMobile ? '11px' : '14px', color: '#888' }}>
                             Le fichier a été téléchargé automatiquement.
                         </p>
                         <button
@@ -358,11 +428,12 @@ const handleSendOtp = async () => {
                                 backgroundColor: '#28a745',
                                 color: 'white',
                                 border: 'none',
-                                padding: '12px 24px',
+                                padding: isMobile ? '10px 20px' : '12px 24px',
                                 borderRadius: '6px',
-                                fontSize: '16px',
+                                fontSize: isMobile ? '14px' : '16px',
                                 cursor: 'pointer',
-                                fontWeight: 'bold'
+                                fontWeight: 'bold',
+                                width: isMobile ? '100%' : 'auto'
                             }}
                         >
                             Retour à l'accueil
@@ -372,23 +443,23 @@ const handleSendOtp = async () => {
             )}
 
             {/* Bannière */}
-            <div style={{ backgroundColor: 'white', padding: '10px 40px', borderBottom: '1px solid #ddd', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <img src="/logo-ngsign.png" alt="NGSign" style={{ height: '35px' }} />
-                <div style={{ fontSize: '13px', textAlign: 'right' }}>
+            <div style={bannerStyles}>
+                <img src="/logo-ngsign.png" alt="NGSign" style={logoStyles} />
+                <div style={infoTextStyles}>
                     <strong>{invitation.nomDocument}</strong><br/>
                     <span style={{ color: '#666' }}>ID: {token.substring(0, 8)}...</span>
                     {invitation.dateExpiration && (
-                        <div style={{ color: new Date(invitation.dateExpiration) < new Date() ? '#dc3545' : '#ffc107', fontSize: '10px', marginTop: '2px' }}>
+                        <div style={{ color: new Date(invitation.dateExpiration) < new Date() ? '#dc3545' : '#ffc107', fontSize: isMobile ? '8px' : '10px', marginTop: '2px' }}>
                             ⏰ Expire le: {new Date(invitation.dateExpiration).toLocaleString()}
                         </div>
                     )}
                 </div>
             </div>
 
-            <div style={{ display: 'flex', flex: 1, overflow: 'hidden' }}>
+            <div style={mainContainerStyles}>
                 
                 <div 
-                    style={{ flex: 2.5, backgroundColor: '#525659', padding: '20px', overflowY: 'auto', cursor: showPositionSelector ? 'crosshair' : 'default' }}
+                    style={pdfContainerStyles}
                     onClick={handlePdfClick}
                 >
                     <div ref={viewerRef} style={{ backgroundColor: 'white', maxWidth: '900px', margin: '0 auto', boxShadow: '0 5px 15px rgba(0,0,0,0.3)', position: 'relative' }}>
@@ -407,12 +478,12 @@ const handleSendOtp = async () => {
                     </div>
                 </div>
 
-                <div style={{ flex: 1, backgroundColor: 'white', borderLeft: '1px solid #ddd', display: 'flex', flexDirection: 'column', padding: '25px', overflowY: 'auto' }}>
+                <div style={signaturePanelStyles}>
                     
-                    <h3>Finaliser la signature</h3>
+                    <h3 style={titleStyles}>Finaliser la signature</h3>
                     
-                    <div style={{ border: '1px solid #eee', padding: '15px', borderRadius: '8px', marginBottom: '20px' }}>
-                        <label style={{ display: 'flex', cursor: 'pointer', gap: '10px', fontSize: '14px' }}>
+                    <div style={{ border: '1px solid #eee', padding: isMobile ? '10px' : '15px', borderRadius: '8px', marginBottom: '20px' }}>
+                        <label style={{ display: 'flex', cursor: 'pointer', gap: '10px', fontSize: isMobile ? '12px' : '14px' }}>
                             <input type="checkbox" checked={accepted} onChange={(e) => setAccepted(e.target.checked)} />
                             Je reconnais avoir lu le document et j'accepte les termes de signature électronique
                         </label>
@@ -424,42 +495,59 @@ const handleSendOtp = async () => {
                             <button 
                                 onClick={() => setShowPositionSelector(true)} 
                                 style={{ 
-                                    ...primaryBtnStyle, 
+                                    ...primaryBtnStyle(isMobile), 
                                     backgroundColor: selectedPosition ? '#28a745' : '#ffc107',
                                     color: selectedPosition ? 'white' : 'black',
-                                    marginBottom: '10px'
+                                    marginBottom: '10px',
+                                    fontSize: isMobile ? '12px' : '14px',
+                                    padding: isMobile ? '10px' : '12px'
                                 }}
                             >
                                 {selectedPosition ? `✅ Emplacement sélectionné (Page ${selectedPosition.pageNumber})` : "📍 Cliquez ici pour choisir l'emplacement"}
                             </button>
                             
                             {showPositionSelector && (
-                                <div style={{ backgroundColor: '#fff3cd', padding: '8px', borderRadius: '4px', marginBottom: '15px', fontSize: '12px', textAlign: 'center', color: '#856404' }}>
+                                <div style={{ backgroundColor: '#fff3cd', padding: '8px', borderRadius: '4px', marginBottom: '15px', fontSize: isMobile ? '10px' : '12px', textAlign: 'center', color: '#856404' }}>
                                     🔍 Mode sélection - Naviguez vers la page souhaitée et cliquez DIRECTEMENT sur le document PDF
                                 </div>
                             )}
                             
                             {selectedPosition && (
-                                <div style={{ backgroundColor: '#d4edda', padding: '8px', borderRadius: '4px', marginBottom: '15px', fontSize: '12px', textAlign: 'center', color: '#155724' }}>
+                                <div style={{ backgroundColor: '#d4edda', padding: '8px', borderRadius: '4px', marginBottom: '15px', fontSize: isMobile ? '10px' : '12px', textAlign: 'center', color: '#155724' }}>
                                     ✓ Signature placée sur la page {selectedPosition.pageNumber} à X:{Math.round(selectedPosition.x)}px Y:{Math.round(selectedPosition.y)}px
                                 </div>
                             )}
                             
-                            <div style={{ display: 'flex', justifyContent: 'center', gap: '10px', marginBottom: '15px' }}>
-                                <button onClick={() => setSignatureMode('draw')} style={{ ...btnIconStyle, backgroundColor: signatureMode === 'draw' ? '#e9ecef' : '#fff' }}>✏️</button>
-                                <button onClick={() => setSignatureMode('text')} style={{ ...btnIconStyle, backgroundColor: signatureMode === 'text' ? '#e9ecef' : '#fff' }}>📝 Texte</button>
-                                <label style={{ ...btnIconStyle, cursor: 'pointer', backgroundColor: signatureMode === 'upload' ? '#e9ecef' : '#fff' }}>
+                            <div style={{ display: 'flex', justifyContent: 'center', gap: isMobile ? '5px' : '10px', marginBottom: '15px' }}>
+                                <button onClick={() => setSignatureMode('draw')} style={{ ...btnIconStyle, backgroundColor: signatureMode === 'draw' ? '#e9ecef' : '#fff', padding: isMobile ? '6px 10px' : '8px 12px', fontSize: isMobile ? '14px' : '18px' }}>✏️</button>
+                                <button onClick={() => setSignatureMode('text')} style={{ ...btnIconStyle, backgroundColor: signatureMode === 'text' ? '#e9ecef' : '#fff', padding: isMobile ? '6px 10px' : '8px 12px', fontSize: isMobile ? '14px' : '18px' }}>📝 Texte</button>
+                                <label style={{ ...btnIconStyle, cursor: 'pointer', backgroundColor: signatureMode === 'upload' ? '#e9ecef' : '#fff', padding: isMobile ? '6px 10px' : '8px 12px', fontSize: isMobile ? '14px' : '18px' }}>
                                     🖼️ <input type="file" hidden onChange={handleImageUpload} accept="image/*" />
                                 </label>
                             </div>
 
-                            <div style={{ border: '1px solid #ddd', height: '140px', backgroundColor: '#fafafa', borderRadius: '4px', display: 'flex', justifyContent: 'center', alignItems: 'center', overflow: 'auto' }}>
+                            <div style={{ border: '1px solid #ddd', height: isMobile ? '120px' : '140px', backgroundColor: '#fafafa', borderRadius: '4px', display: 'flex', justifyContent: 'center', alignItems: 'center', overflow: 'auto' }}>
                                 {signatureMode === 'draw' && (
-                                    <SignatureCanvas ref={sigCanvas} penColor='black' canvasProps={{ width: 350, height: 130 }} />
+                                    <SignatureCanvas 
+                                        ref={sigCanvas} 
+                                        penColor='black' 
+                                        canvasProps={{ 
+                                            width: isMobile ? 250 : 350, 
+                                            height: isMobile ? 100 : 130 
+                                        }} 
+                                    />
                                 )}
                                 {signatureMode === 'text' && (
                                     <input 
-                                        style={{ fontFamily: '"Dancing Script", cursive', fontSize: '28px', border: 'none', background: 'transparent', textAlign: 'center', width: '90%', outline: 'none' }}
+                                        style={{ 
+                                            fontFamily: '"Dancing Script", cursive', 
+                                            fontSize: isMobile ? '20px' : '28px', 
+                                            border: 'none', 
+                                            background: 'transparent', 
+                                            textAlign: 'center', 
+                                            width: '90%', 
+                                            outline: 'none' 
+                                        }}
                                         value={signatureText}
                                         onChange={(e) => setSignatureText(e.target.value)}
                                         placeholder="Votre signature"
@@ -469,40 +557,43 @@ const handleSendOtp = async () => {
                                     <img src={uploadedImage} alt="Signature" style={{ maxHeight: '100%', maxWidth: '100%' }} />
                                 )}
                                 {signatureMode === 'upload' && !uploadedImage && (
-                                    <span style={{ color: '#999', fontSize: '12px' }}>Cliquez sur l'icône 🖼️ pour importer une image</span>
+                                    <span style={{ color: '#999', fontSize: isMobile ? '10px' : '12px' }}>
+                                        Cliquez sur l'icône 🖼️ pour importer une image
+                                    </span>
                                 )}
                             </div>
                             
                             {signatureMode === 'draw' && (
-                                <button onClick={clearSignature} style={{ background: 'none', border: 'none', fontSize: '11px', color: '#888', width: '100%', marginTop: '5px', cursor: 'pointer' }}>
+                                <button onClick={clearSignature} style={{ background: 'none', border: 'none', fontSize: isMobile ? '10px' : '11px', color: '#888', width: '100%', marginTop: '5px', cursor: 'pointer' }}>
                                     Effacer le dessin
                                 </button>
                             )}
 
                             <div style={{ marginTop: '25px' }}>
                                 {!isOtpSent ? (
-                                    <button onClick={handleSendOtp} style={primaryBtnStyle} disabled={loading}>
+                                    <button onClick={handleSendOtp} style={primaryBtnStyle(isMobile)} disabled={loading}>
                                         {loading ? "Envoi en cours..." : "📱 Recevoir le code par Email"}
                                     </button>
                                 ) : (
                                     <>
-                                        <p style={{ fontSize: '12px', textAlign: 'center', color: '#666' }}>
-Entrez le code reçu à l'adresse {invitation.emailDestinataire}                                        </p>
+                                        <p style={{ fontSize: isMobile ? '10px' : '12px', textAlign: 'center', color: '#666' }}>
+                                            Entrez le code reçu à l'adresse {invitation.emailDestinataire}
+                                        </p>
                                         <input 
                                             type="text" 
                                             placeholder="123456" 
                                             value={otp} 
                                             onChange={(e) => setOtp(e.target.value)}
-                                            style={otpInputStyle}
+                                            style={otpInputStyle(isMobile)}
                                             autoFocus
                                         />
-                                        <button onClick={handleSendOtp} style={{ background: 'none', border: 'none', color: '#007bff', fontSize: '12px', width: '100%', cursor: 'pointer', marginBottom: '15px' }}>
+                                        <button onClick={handleSendOtp} style={{ background: 'none', border: 'none', color: '#007bff', fontSize: isMobile ? '10px' : '12px', width: '100%', cursor: 'pointer', marginBottom: '15px' }}>
                                             Renvoyer le code
                                         </button>
                                         
-                                        <div style={{ backgroundColor: '#f8f9fa', padding: '10px', borderRadius: '4px', marginBottom: '15px', fontSize: '11px' }}>
+                                        <div style={{ backgroundColor: '#f8f9fa', padding: isMobile ? '8px' : '10px', borderRadius: '4px', marginBottom: '15px', fontSize: isMobile ? '10px' : '11px' }}>
                                             <p style={{ margin: '0 0 5px 0', fontWeight: 'bold' }}>Prérequis avant signature :</p>
-                                            <ul style={{ margin: 0, paddingLeft: '20px' }}>
+                                            <ul style={{ margin: 0, paddingLeft: isMobile ? '15px' : '20px' }}>
                                                 <li style={{ color: accepted ? '#28a745' : '#dc3545' }}>✓ Acceptation des termes</li>
                                                 <li style={{ color: selectedPosition ? '#28a745' : '#dc3545' }}>✓ Emplacement de signature choisi</li>
                                                 <li style={{ color: isOtpSent ? '#28a745' : '#dc3545' }}>✓ Code OTP reçu</li>
@@ -510,7 +601,17 @@ Entrez le code reçu à l'adresse {invitation.emailDestinataire}                
                                             </ul>
                                         </div>
                                         
-                                        <button onClick={handleSimpleSign} disabled={isSignButtonDisabled} style={{ ...primaryBtnStyle, backgroundColor: '#28a745', color: 'white', fontSize: '16px', padding: '15px' }}>
+                                        <button 
+                                            onClick={handleSimpleSign} 
+                                            disabled={isSignButtonDisabled} 
+                                            style={{ 
+                                                ...primaryBtnStyle(isMobile), 
+                                                backgroundColor: '#28a745', 
+                                                color: 'white', 
+                                                fontSize: isMobile ? '14px' : '16px', 
+                                                padding: isMobile ? '12px' : '15px' 
+                                            }}
+                                        >
                                             {loading ? "Signature en cours..." : "✅ SIGNER LE DOCUMENT"}
                                         </button>
                                     </>
@@ -519,7 +620,7 @@ Entrez le code reçu à l'adresse {invitation.emailDestinataire}                
                         </div>
                     )}
 
-                    <div style={{ marginTop: 'auto', textAlign: 'center', fontSize: '11px', color: '#28a745', paddingTop: '20px' }}>
+                    <div style={{ marginTop: 'auto', textAlign: 'center', fontSize: isMobile ? '9px' : '11px', color: '#28a745', paddingTop: '20px' }}>
                         🛡️ Conformité ISO 27005 - Sécurisé par TrustSign
                     </div>
                 </div>
@@ -530,6 +631,19 @@ Entrez le code reçu à l'adresse {invitation.emailDestinataire}                
                 @keyframes fadeIn { from { opacity: 0; transform: scale(0.95); } to { opacity: 1; transform: scale(1); } }
                 .rpv-core__viewer { cursor: ${showPositionSelector ? 'crosshair' : 'default'}; }
                 .rpv-core__page-layer canvas { cursor: ${showPositionSelector ? 'crosshair' : 'default'}; }
+                
+                /* Responsive PDF viewer */
+                @media (max-width: 768px) {
+                    .rpv-core__viewer {
+                        zoom: 0.8;
+                    }
+                }
+                
+                @media (max-width: 480px) {
+                    .rpv-core__viewer {
+                        zoom: 0.6;
+                    }
+                }
             `}</style>
         </div>
     );
@@ -545,9 +659,9 @@ const btnIconStyle = {
     background: '#fff'
 };
 
-const primaryBtnStyle = {
+const primaryBtnStyle = (isMobile) => ({
     width: '100%',
-    padding: '12px',
+    padding: isMobile ? '10px' : '12px',
     backgroundColor: '#007bff',
     color: 'white',
     border: 'none',
@@ -555,17 +669,17 @@ const primaryBtnStyle = {
     fontWeight: 'bold',
     cursor: 'pointer',
     transition: 'all 0.2s'
-};
+});
 
-const otpInputStyle = {
+const otpInputStyle = (isMobile) => ({
     width: '100%',
-    padding: '12px',
-    fontSize: '20px',
+    padding: isMobile ? '10px' : '12px',
+    fontSize: isMobile ? '16px' : '20px',
     textAlign: 'center',
-    letterSpacing: '6px',
+    letterSpacing: isMobile ? '3px' : '6px',
     border: '1px solid #ccc',
     borderRadius: '6px',
     marginBottom: '10px'
-};
+});
 
 export default SignatureSimplePage;
