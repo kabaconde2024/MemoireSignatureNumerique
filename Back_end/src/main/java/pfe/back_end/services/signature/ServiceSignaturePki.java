@@ -5,6 +5,7 @@ import com.itextpdf.kernel.pdf.*;
 import com.itextpdf.signatures.*;
 
 import org.bouncycastle.jce.provider.BouncyCastleProvider;
+import org.bouncycastle.util.encoders.Hex;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import pfe.back_end.services.hsm.ServiceGestionClesHSM;
@@ -13,6 +14,7 @@ import pfe.back_end.services.authentification.ConvertisseurCoordonneesPdf;
 import pfe.back_end.services.timestamp.ServiceHorodatage;
 import pfe.back_end.repositories.sql.DocumentRepository;
 import pfe.back_end.modeles.entites.Document;
+import pfe.back_end.modeles.entites.StatutDocument;
 
 import java.io.*;
 import java.security.MessageDigest;
@@ -50,17 +52,14 @@ public class ServiceSignaturePki {
         }
     }
 
-    // ✅ CORRECTION : Remplacer 'tel' par 'email' pour la vérification OTP
     public byte[] signerDocumentPki(byte[] pdfBytes, String nom, String email, String otp,
                                     float x, float y, int pageNumber,
                                     float displayWidth, float displayHeight,
                                     String aliasUtilisateur, Long documentId) throws Exception {
 
         System.out.println("=== VÉRIFICATION OTP PKI ===");
-        System.out.println("Email: " + email);
-        System.out.println("OTP reçu: " + otp);
         
-        // 1. Vérification OTP - Utilisation de l'email au lieu du téléphone
+        // 1. Vérification OTP
         if (!serviceSmsOtp.verifyOtp(email, otp)) {
             System.err.println("❌ OTP invalide pour: " + email);
             throw new RuntimeException("Code OTP invalide pour la signature PKI");
@@ -93,7 +92,7 @@ public class ServiceSignaturePki {
         Certificate[] chaineCertificats = new Certificate[]{certificat};
         byte[] pdfSigne;
 
-        // 4. Exécution de la signature cryptographique
+        // 4. Exécution de la signature cryptographique (PAdES / CAdES)
         try (ByteArrayInputStream bais = new ByteArrayInputStream(pdfBytes);
              ByteArrayOutputStream baos = new ByteArrayOutputStream()) {
 
@@ -121,14 +120,10 @@ public class ServiceSignaturePki {
             IExternalDigest digest = new BouncyCastleDigest();
             IExternalSignature signature = new IExternalSignature() {
                 @Override
-                public String getHashAlgorithm() {
-                    return DigestAlgorithms.SHA256;
-                }
+                public String getHashAlgorithm() { return DigestAlgorithms.SHA256; }
 
                 @Override
-                public String getEncryptionAlgorithm() {
-                    return "RSA";
-                }
+                public String getEncryptionAlgorithm() { return "RSA"; }
 
                 @Override
                 public byte[] sign(byte[] message) {
@@ -148,7 +143,7 @@ public class ServiceSignaturePki {
             System.out.println("✅ Document signé via HSM avec succès.");
         }
 
-        // 5. Horodatage
+        // 5. Horodatage RFC 3161 et Mise à jour BDD
         if (serviceHorodatage != null && serviceHorodatage.isEnabled()) {
             try {
                 MessageDigest sha256 = MessageDigest.getInstance("SHA-256");
@@ -157,14 +152,19 @@ public class ServiceSignaturePki {
 
                 if (tokenHorodatage != null) {
                     String tokenBase64 = serviceHorodatage.jetonEnBase64(tokenHorodatage);
+                    
+                    // On intègre le jeton dans les métadonnées du PDF
                     pdfSigne = integrerHorodatageMetadonnee(pdfSigne, tokenBase64, nom);
-                    sauvegarderHorodatageEnBDD(documentId, tokenBase64);
-                    System.out.println("✅ Horodatage RFC 3161 appliqué.");
+                    
+                    // ✅ CORRECTION : On passe maintenant pdfSigne pour calculer l'empreinte finale en BDD
+                    sauvegarderHorodatageEnBDD(documentId, tokenBase64, pdfSigne);
+                    
+                    System.out.println("✅ Horodatage appliqué et BDD mise à jour.");
                 } else {
                     throw new RuntimeException("Réponse TSA vide");
                 }
             } catch (Exception e) {
-                System.err.println("⚠️ Alerte Horodatage : " + e.getMessage());
+                System.err.println("⚠️ Erreur Horodatage : " + e.getMessage());
                 throw new RuntimeException("La signature PKI requiert un horodatage valide.");
             }
         }
@@ -172,12 +172,33 @@ public class ServiceSignaturePki {
         return pdfSigne;
     }
 
-    private void sauvegarderHorodatageEnBDD(Long documentId, String tokenBase64) {
+    /**
+     * Met à jour l'entité Document avec le jeton de temps et le HASH final du document.
+     */
+    private void sauvegarderHorodatageEnBDD(Long documentId, String tokenBase64, byte[] pdfSigne) {
         if (documentId != null) {
             Optional<Document> optDoc = documentRepository.findById(documentId);
             optDoc.ifPresent(doc -> {
+                // 1. Infos Horodatage
                 doc.setJetonTimestamp(tokenBase64);
                 doc.setDateHorodatage(LocalDateTime.now());
+
+                // 2. ✅ CALCUL DE LA SIGNATURE NUMÉRIQUE (Hash final du fichier signé)
+                try {
+                    MessageDigest digest = MessageDigest.getInstance("SHA-256");
+                    byte[] hashBytes = digest.digest(pdfSigne);
+                    String hashHex = Hex.toHexString(hashBytes);
+                    
+                    doc.setSignatureNumerique(hashHex); // Remplissage de la colonne TEXT
+                    doc.setHashSha256(hashHex);         // Pour la vérification d'intégrité
+                    doc.setEstSigne(true);
+                    doc.setStatut(StatutDocument.SIGNE);
+                    
+                    System.out.println("✅ BDD : Empreinte numérique stockée (" + hashHex + ")");
+                } catch (Exception e) {
+                    System.err.println("❌ Erreur de hachage final : " + e.getMessage());
+                }
+
                 documentRepository.save(doc);
             });
         }
