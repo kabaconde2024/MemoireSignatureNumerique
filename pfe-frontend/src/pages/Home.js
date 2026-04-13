@@ -159,7 +159,7 @@ const Home = () => {
     }}>
       
       {/* NAVBAR */}
-      <AppBar position="fixed" elevation={0} sx={{ bgcolor: 'rgba(64, 123, 51, 0.8)', backdropFilter: 'blur(15px)', borderBottom: `1px solid rgba(255, 193, 7, 0.2)` }}>
+      <AppBar position="fixed" elevation={0} sx={{ bgcolor: 'rgba(11, 30, 57, 0.8)', backdropFilter: 'blur(15px)', borderBottom: `1px solid rgba(255, 193, 7, 0.2)` }}>
         <Container maxWidth="lg">
           <Toolbar sx={{ justifyContent: 'space-between', height: { xs: 70, sm: 80 }, px: { xs: 1, sm: 2 } }}>
             <Stack direction="row" alignItems="center" spacing={isMobile ? 1 : 1.5}>
@@ -195,20 +195,20 @@ const Home = () => {
 
             {/* Mobile Menu Button */}
             {isMobile && (
-              <IconButton color="inherit" onClick={() => setMobileMenuOpen(!mobileMenuOpen)}>
+              <IconButton color="inherit" onClick={() => setMobileMenuOpen(!mobileMenuOpen)} size="small">
                 <MenuIcon />
               </IconButton>
             )}
           </Toolbar>
 
-          {/* Mobile Menu Dropdown */}
+          {/* Mobile Menu Dropdown - TAILLE RÉDUITE */}
           {isMobile && mobileMenuOpen && (
             <Stack 
-              spacing={1} 
+              spacing={0.5} 
               sx={{ 
-                pb: 2, 
-                px: 2, 
-                bgcolor: 'rgba(200, 176, 81, 0.95)', 
+                pb: 1, 
+                px: 1.5, 
+                bgcolor: 'rgba(11, 30, 57, 0.95)', 
                 backdropFilter: 'blur(10px)',
                 borderTop: '1px solid rgba(255,193,7,0.2)'
               }}
@@ -216,7 +216,14 @@ const Home = () => {
               <Button 
                 fullWidth 
                 onClick={() => { setOpenConnexion(true); setMobileMenuOpen(false); }} 
-                sx={{ color: '#fff', textTransform: 'none', justifyContent: 'flex-start', py: 1 }}
+                sx={{ 
+                  color: '#fff', 
+                  textTransform: 'none', 
+                  justifyContent: 'center', 
+                  py: 0.75,
+                  fontSize: '0.8rem',
+                  '&:hover': { bgcolor: 'rgba(255,193,7,0.1)' }
+                }}
               >
                 Se connecter
               </Button>
@@ -224,7 +231,15 @@ const Home = () => {
                 fullWidth 
                 variant="contained" 
                 onClick={() => { setOpenDemande(true); setMobileMenuOpen(false); }}
-                sx={{ bgcolor: colors.gold, color: colors.navy, textTransform: 'none', fontWeight: 800 }}
+                sx={{ 
+                  bgcolor: colors.gold, 
+                  color: colors.navy, 
+                  textTransform: 'none', 
+                  fontWeight: 800,
+                  py: 0.75,
+                  fontSize: '0.8rem',
+                  '&:hover': { bgcolor: '#e5ac00' }
+                }}
               >
                 Créer un compte
               </Button>
@@ -233,8 +248,8 @@ const Home = () => {
         </Container>
       </AppBar>
 
-      {/* HERO SECTION */}
-      <Box sx={{ pt: { xs: 12, sm: 15, md: 22 }, pb: { xs: 5, sm: 8, md: 10 } }}>
+      {/* HERO SECTION - ESPACE AUGMENTÉ POUR LA DESCRIPTION */}
+      <Box sx={{ pt: { xs: 14, sm: 15, md: 22 }, pb: { xs: 6, sm: 8, md: 10 } }}>
         <Container maxWidth="lg">
           <Grid container spacing={isMobile ? 4 : 8} alignItems="center">
             <Grid item xs={12} md={7}>
@@ -257,7 +272,7 @@ const Home = () => {
                     variant="h1" 
                     sx={{ 
                       fontWeight: 950, 
-                      mb: isMobile ? 2 : 3, 
+                      mb: isMobile ? 3 : 4, 
                       fontSize: { xs: '1.8rem', sm: '2.5rem', md: '3.5rem' }, 
                       lineHeight: 1.2
                     }}
@@ -268,7 +283,7 @@ const Home = () => {
                     variant="body1" 
                     sx={{ 
                       color: '#94a3b8', 
-                      mb: isMobile ? 3 : 5, 
+                      mb: isMobile ? 4 : 5, 
                       fontSize: isMobile ? '0.9rem' : '1.1rem', 
                       maxWidth: isMobile ? '100%' : '90%' 
                     }}
@@ -276,7 +291,7 @@ const Home = () => {
                     Leader en Tunisie avec plus de 22 ans d'expertise. Notre plateforme garantit l'intégrité, l'authenticité et la non-répudiation de vos échanges électroniques.
                   </Typography>
                   
-                  <Stack direction={{ xs: 'column', sm: 'row' }} spacing={isMobile ? 1.5 : 2}>
+                  <Stack direction={{ xs: 'column', sm: 'row' }} spacing={isMobile ? 2 : 2}>
                     <Button 
                       variant="contained" 
                       size={isMobile ? "medium" : "large"} 
