@@ -35,11 +35,11 @@ const SignaturePad = ({ fileUrl, onConfirm, signataireNom, signatureType }) => {
     return (
         <Box sx={{ textAlign: 'center', p: 2, bgcolor: '#f0f2f5', borderRadius: '15px' }}>
             <Typography variant="h6" sx={{ mb: 1, color: '#0b1e39', fontWeight: 'bold' }}>
-                Positionnez le cachet de signature pour : {signataireNom}
+                Positionnez votre signature : {signataireNom}
             </Typography>
             
             <Typography variant="body2" sx={{ mb: 2, color: signatureType === 'pki' ? '#2e7d32' : '#ffc107', fontWeight: 'bold' }}>
-                Type de signature : {signatureType === 'pki' ? '🔐 Signature PKI (avec certificat numérique)' : '📝 Signature simple'}
+                Mode : {signatureType === 'pki' ? '🔐 Signature Certifiée PKI' : '📝 Signature Simple'}
             </Typography>
             
             <Box 
@@ -103,13 +103,9 @@ const SignaturePad = ({ fileUrl, onConfirm, signataireNom, signatureType }) => {
                         '&:hover': { bgcolor: signatureType === 'pki' ? '#1b5e20' : '#1a3a5a' } 
                     }}
                 >
-                    Valider la position et envoyer l'invitation
+                    Confirmer l'emplacement et signer
                 </Button>
             </Stack>
-            
-            <Typography variant="caption" sx={{ display: 'block', mt: 1, color: '#7f8c8d' }}>
-                Glissez-déposez le rectangle {signatureType === 'pki' ? 'vert' : 'jaune'} à l'endroit souhaité sur le document.
-            </Typography>
         </Box>
     );
 };

@@ -1,9 +1,7 @@
-// UserDashboard.js - Version allégée
 import React, { useState, useEffect, useCallback } from 'react';
 import axios from 'axios';
 import { useDropzone } from 'react-dropzone';
 import { Box, CssBaseline, Snackbar, Alert } from '@mui/material';
-
 
 // Composants externalisés (dashboard)
 import Sidebar from '../components/dashboard/Sidebar';
@@ -13,17 +11,11 @@ import SecurityView from '../components/dashboard/SecurityView';
 import SignatureView from '../components/dashboard/SignatureView';
 import CertificatView from '../components/dashboard/CertificatView';
 
-
 import AutoSignatureDocument from '../components/AutoSignature/AutoSignatureDocument'; 
 import ListeDocumentsAutoSigne from '../components/AutoSignature/ListeDocumentsAutoSigne';
 import SignaturesView from '../components/Simples/SignaturesView';
 import StepConfig from '../components/Simples/StepConfig';
-import SignaturePad from '../components/Simples/SignaturePad';
 import TransactionsView from '../components/Simples/TransactionsView';
-
-
-
-
 
 const UserDashboard = () => {
   const [view, setView] = useState('signatures');
@@ -34,9 +26,6 @@ const UserDashboard = () => {
   const [snackbar, setSnackbar] = useState({ open: false, message: '', severity: 'success' });
   const [uploadedFiles, setUploadedFiles] = useState([]);
   const [addedSignataires, setAddedSignataires] = useState([]);
-  const [fileUrl, setFileUrl] = useState(null);
-  const [currentSignataire, setCurrentSignataire] = useState(null);
-  const [selectedSignatureType, setSelectedSignatureType] = useState('simple');
   const [userData, setUserData] = useState({ email: '', telephone: '', prenom: '', nom: '', statut: 'NONE' });
   const [transactions, setTransactions] = useState([]);
   const [loadingTransactions, setLoadingTransactions] = useState(false);
@@ -89,18 +78,18 @@ const UserDashboard = () => {
     }
   };
 
-  const handleLaunchPad = (signataire, signatureType) => {
-    setCurrentSignataire(signataire);
-    setSelectedSignatureType(signatureType);
+  // CORRECTION : L'expéditeur ne sélectionne plus la position, on envoie directement
+  const handleLaunchPad = async (signataire, signatureType) => {
     if (uploadedFiles.length > 0) {
-      setFileUrl(URL.createObjectURL(uploadedFiles[0]));
-      setStep(3);
+      // Coordonnées par défaut (0,0) car c'est le destinataire qui choisira ou le backend
+      const defaultPosition = { x: 0, y: 0, page: 1 };
+      await handleFinalConfirm(defaultPosition, signataire, signatureType);
     } else {
       setSnackbar({ open: true, message: "Aucun document sélectionné.", severity: 'error' });
     }
   };
 
-  const handleFinalConfirm = async (position) => {
+  const handleFinalConfirm = async (position, signataireInfo, typeSig) => {
     const file = uploadedFiles[0];
     try {
       const formData = new FormData();
@@ -112,28 +101,28 @@ const UserDashboard = () => {
       
       const payload = {
         documentId: uploadResponse.data.id,
-        emailDestinataire: currentSignataire.email,
-        telephone: currentSignataire.telephone,
-        nom: currentSignataire.nom,
-        prenom: currentSignataire.prenom,
+        emailDestinataire: signataireInfo.email,
+        telephone: signataireInfo.telephone,
+        nom: signataireInfo.nom,
+        prenom: signataireInfo.prenom,
         x: position.x,
         y: position.y,
         pageNumber: position.page || 1,
-        typeSignature: selectedSignatureType
+        typeSignature: typeSig
       };
       
       await axios.post('https://memoiresignaturenumerique.onrender.com/api/signature/creer-transaction', payload, { withCredentials: true });
       
       setSnackbar({ 
         open: true, 
-        message: `Invitation ${selectedSignatureType === 'pki' ? 'PKI' : 'simple'} envoyée à ${currentSignataire.email} !`, 
+        message: `Invitation ${typeSig === 'pki' ? 'PKI' : 'simple'} envoyée à ${signataireInfo.email} !`, 
         severity: 'success' 
       });
       setStep(1);
       setUploadedFiles([]);
       setAddedSignataires([]);
     } catch (error) {
-      setSnackbar({ open: true, message: "Erreur lors du processus.", severity: 'error' });
+      setSnackbar({ open: true, message: "Erreur lors de l'envoi.", severity: 'error' });
     }
   };
 
@@ -160,8 +149,6 @@ const UserDashboard = () => {
         <Header setView={setView} userData={userData} />
         
         <Box sx={{ p: 4 }}>
-          
-          {/* Signature Simple */}
           {view === 'signatures' && (
             <>
               {step === 1 && (
@@ -184,42 +171,33 @@ const UserDashboard = () => {
                   setAddedSignataires={setAddedSignataires} 
                 />
               )}
-             {/* {step === 3 && (
-                <SignaturePad 
-                  fileUrl={fileUrl} 
-                  signataireNom={`${currentSignataire?.prenom} ${currentSignataire?.nom}`} 
-                  signatureType={selectedSignatureType} 
-                  onConfirm={handleFinalConfirm} 
-                />
-              )}  */}
+              {/* L'étape 3 (SignaturePad) est retirée du flux expéditeur */}
             </>
           )}
 
-          {/* Transactions */}
           {view === 'transactions' && (
             <TransactionsView invitations={transactions} loading={loadingTransactions} />
           )}
 
-          {/* Certificat PKI */}
           {view === 'certificat' && (
             <CertificatView 
-            currentStatus={userData.status_pki || userData.statut}
+              currentStatus={userData.status_pki || userData.statut}
               onStatusRefresh={fetchUserProfile} 
               setSnackbar={setSnackbar} 
             />
           )}
 
-       {/* Profil Utilisateur */}
-{view === 'mes-informations' && (
-    <ProfileView 
-        userData={userData} 
-        setUserData={setUserData} 
-        isEditing={isEditing} 
-        setIsEditing={setIsEditing} 
-        handleUpdateProfil={handleUpdateProfil} 
-        setSnackbar={setSnackbar}  // ← AJOUTER CETTE LIGNE
-    />
-)}
+          {view === 'mes-informations' && (
+              <ProfileView 
+                  userData={userData} 
+                  setUserData={setUserData} 
+                  isEditing={isEditing} 
+                  setIsEditing={setIsEditing} 
+                  handleUpdateProfil={handleUpdateProfil} 
+                  setSnackbar={setSnackbar}
+              />
+          )}
+
           {view === 'securite' && (
             <SecurityView 
               passwordData={passwordData} 
@@ -228,17 +206,13 @@ const UserDashboard = () => {
             />
           )}
           
-     {view === 'ma-signature' && (
-    <SignatureView 
-        setSnackbar={setSnackbar}
-        onSignatureSaved={() => {
-            // Optionnel: rafraîchir le profil ou autre action
-            fetchUserProfile();
-        }}
-    />
-)}
+          {view === 'ma-signature' && (
+              <SignatureView 
+                  setSnackbar={setSnackbar}
+                  onSignatureSaved={() => { fetchUserProfile(); }}
+              />
+          )}
 
-          {/* Auto-Signature */}
           {view === 'auto-signature' && (
             <AutoSignatureDocument setSnackbar={setSnackbar} />
           )}
@@ -246,7 +220,6 @@ const UserDashboard = () => {
           {view === 'liste-auto-signe' && (
             <ListeDocumentsAutoSigne setSnackbar={setSnackbar} />
           )}
-          
         </Box>
       </Box>
 
