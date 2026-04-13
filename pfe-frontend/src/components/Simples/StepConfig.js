@@ -1,15 +1,15 @@
 // components/simple/StepConfig.jsx
 import React, { useState } from 'react';
 import { Box, Button, Paper, Typography, TextField, Grid, Stack, Chip, Card, CardContent, InputAdornment } from '@mui/material';
-import { Draw, Security, ArrowBack } from '@mui/icons-material';
+import { Draw, Security, ArrowBack, Visibility, Send } from '@mui/icons-material';
 
-const StepConfig = ({ prevStep, onLaunchPad, setSnackbar, addedSignataires, setAddedSignataires }) => {
+const StepConfig = ({ prevStep, onLaunchPad, onPreview, setSnackbar, addedSignataires, setAddedSignataires }) => {
     const [sigType, setSigType] = useState('simple');
     const [signataire, setSignataire] = useState({ email: '', telephone: '', prenom: '', nom: '' });
 
     const types = [
         { id: 'simple', title: 'Signature simple', desc: 'Basée sur un horodatage électronique et une double authentification', icon: <Draw sx={{ fontSize: 40 }} /> },
-        { id: 'pki', title: 'Signature basée sur PKI', desc: 'Utilise des certificats numériques pour une sécurité et une non-répudiation accrues', icon: <Security sx={{ fontSize: 40 }} /> }
+        { id: 'pki', title: 'Signature basée sur PKI', desc: 'Utilise des certificats numériques pour une sécurité et une non-répudiation accrue', icon: <Security sx={{ fontSize: 40 }} /> }
     ];
 
     const handleAdd = () => {
@@ -85,15 +85,33 @@ const StepConfig = ({ prevStep, onLaunchPad, setSnackbar, addedSignataires, setA
                 ))}
             </Grid>
 
-            <Button 
-                fullWidth variant="contained" 
-                disabled={addedSignataires.length === 0} 
-                onClick={() => onLaunchPad(addedSignataires[0], sigType)}
-                sx={{ py: 2, bgcolor: '#0b1e39', fontWeight: 'bold', '&:hover': { bgcolor: '#1a2e4a' } }}
-                startIcon={<Draw />}
-            >
-                Placer la signature sur le document
-            </Button>
+            <Stack direction="row" spacing={2}>
+                {/* Nouveau bouton de prévisualisation */}
+                <Button 
+                    variant="outlined" 
+                    fullWidth
+                    startIcon={<Visibility />}
+                    onClick={onPreview}
+                    sx={{ py: 1.5, borderColor: '#0b1e39', color: '#0b1e39', fontWeight: 'bold' }}
+                >
+                    Vérifier le document
+                </Button>
+
+                {/* Bouton d'envoi direct corrigé */}
+                <Button 
+                    fullWidth variant="contained" 
+                    disabled={addedSignataires.length === 0} 
+                    onClick={() => onLaunchPad(addedSignataires[0], sigType)}
+                    sx={{ py: 1.5, bgcolor: '#0b1e39', fontWeight: 'bold', '&:hover': { bgcolor: '#1a2e4a' } }}
+                    startIcon={<Send />}
+                >
+                    Envoyer l'invitation de signature
+                </Button>
+            </Stack>
+            
+            <Typography variant="caption" sx={{ display: 'block', textAlign: 'center', mt: 2, color: '#7f8c8d' }}>
+                En cliquant sur envoyer, un e-mail sera adressé au signataire pour apposer sa signature.
+            </Typography>
         </Box>
     );
 };

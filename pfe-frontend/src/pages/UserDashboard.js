@@ -51,6 +51,14 @@ const UserDashboard = () => {
     } finally { setLoadingTransactions(false); }
   };
 
+  // NOUVELLE FONCTION : Permet à l'expéditeur de voir le fichier chargé avant l'envoi
+  const handlePreviewDocument = () => {
+    if (uploadedFiles.length > 0) {
+      const fileURL = URL.createObjectURL(uploadedFiles[0]);
+      window.open(fileURL, '_blank');
+    }
+  };
+
   const handleUpdateProfil = async () => {
     try {
       await axios.put('https://memoiresignaturenumerique.onrender.com/api/utilisateur/modifier-profil', userData, { withCredentials: true });
@@ -78,10 +86,10 @@ const UserDashboard = () => {
     }
   };
 
-  // CORRECTION : L'expéditeur ne sélectionne plus la position, on envoie directement
+  // CORRECTION : Déclenche l'envoi immédiat après vérification optionnelle
   const handleLaunchPad = async (signataire, signatureType) => {
     if (uploadedFiles.length > 0) {
-      // Coordonnées par défaut (0,0) car c'est le destinataire qui choisira ou le backend
+      // Coordonnées 0,0 car le placement n'est plus géré par l'expéditeur ici
       const defaultPosition = { x: 0, y: 0, page: 1 };
       await handleFinalConfirm(defaultPosition, signataire, signatureType);
     } else {
@@ -115,14 +123,14 @@ const UserDashboard = () => {
       
       setSnackbar({ 
         open: true, 
-        message: `Invitation ${typeSig === 'pki' ? 'PKI' : 'simple'} envoyée à ${signataireInfo.email} !`, 
+        message: `Invitation ${typeSig === 'pki' ? 'PKI' : 'simple'} envoyée avec succès à ${signataireInfo.email} !`, 
         severity: 'success' 
       });
       setStep(1);
       setUploadedFiles([]);
       setAddedSignataires([]);
     } catch (error) {
-      setSnackbar({ open: true, message: "Erreur lors de l'envoi.", severity: 'error' });
+      setSnackbar({ open: true, message: "Erreur lors de l'envoi de l'invitation.", severity: 'error' });
     }
   };
 
@@ -166,12 +174,12 @@ const UserDashboard = () => {
                 <StepConfig 
                   prevStep={() => setStep(1)} 
                   onLaunchPad={handleLaunchPad} 
+                  onPreview={handlePreviewDocument} // On passe la fonction de prévisualisation
                   setSnackbar={setSnackbar} 
                   addedSignataires={addedSignataires} 
                   setAddedSignataires={setAddedSignataires} 
                 />
               )}
-              {/* L'étape 3 (SignaturePad) est retirée du flux expéditeur */}
             </>
           )}
 
