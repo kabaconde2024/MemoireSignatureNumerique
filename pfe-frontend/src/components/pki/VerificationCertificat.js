@@ -1,8 +1,7 @@
-// src/components/pki/VerificationCertificat.jsx
 import React, { useState } from 'react';
 import { 
     Box, Card, CardContent, Typography, Button, Alert, 
-    CircularProgress, Chip, Grid, Divider, Stack 
+    CircularProgress, Chip, Grid, Divider, Stack, useMediaQuery
 } from '@mui/material';
 import { 
     VerifiedUser, Security, CheckCircle, Error as ErrorIcon,
@@ -14,6 +13,10 @@ const VerificationCertificat = () => {
     const [loading, setLoading] = useState(false);
     const [resultat, setResultat] = useState(null);
     const [statutGlobal, setStatutGlobal] = useState(null);
+    
+    // Responsive detection
+    const isMobile = useMediaQuery('(max-width:600px)');
+    const isSmallMobile = useMediaQuery('(max-width:380px)');
 
     const verifierCertificat = async () => {
         setLoading(true);
@@ -35,46 +38,52 @@ const VerificationCertificat = () => {
     };
 
     return (
-        <Card sx={{ mb: 3, borderRadius: 2, border: '1px solid #e0e0e0' }}>
-            <CardContent>
-                <Stack direction="row" justifyContent="space-between" alignItems="center">
+        <Card sx={{ 
+            mb: { xs: 2, sm: 3 }, 
+            borderRadius: 2, 
+            border: '1px solid #e0e0e0',
+            mx: { xs: 1, sm: 0 }
+        }}>
+            <CardContent sx={{ p: { xs: 1.5, sm: 2, md: 3 } }}>
+                <Stack direction={isMobile ? "column" : "row"} justifyContent="space-between" alignItems={isMobile ? "stretch" : "center"} spacing={isMobile ? 2 : 0}>
                     <Box display="flex" alignItems="center">
-                        <Security sx={{ color: '#1a237e', mr: 1 }} />
-                        <Typography variant="h6" fontWeight="bold">
+                        <Security sx={{ color: '#1a237e', mr: 1, fontSize: isMobile ? 24 : 28 }} />
+                        <Typography variant={isMobile ? "subtitle1" : "h6"} fontWeight="bold" sx={{ fontSize: isSmallMobile ? '0.9rem' : 'inherit' }}>
                             Vérification du Certificat Numérique
                         </Typography>
                     </Box>
                     <Button
                         variant="contained"
-                        startIcon={loading ? <CircularProgress size={20} /> : <Refresh />}
+                        startIcon={loading ? <CircularProgress size={isMobile ? 16 : 20} /> : <Refresh />}
                         onClick={verifierCertificat}
                         disabled={loading}
-                        sx={{ bgcolor: '#1a237e' }}
+                        sx={{ bgcolor: '#1a237e', py: isMobile ? 0.75 : 1, fontSize: isMobile ? '0.75rem' : '0.875rem' }}
+                        fullWidth={isMobile}
                     >
                         {loading ? "Vérification..." : "Vérifier mon certificat"}
                     </Button>
                 </Stack>
 
                 {resultat && (
-                    <Box sx={{ mt: 3 }}>
+                    <Box sx={{ mt: { xs: 2, sm: 3 } }}>
                         <Alert 
                             severity={resultat.valide ? "success" : "error"}
                             icon={resultat.valide ? <VerifiedUser /> : <ErrorIcon />}
-                            sx={{ mb: 2 }}
+                            sx={{ mb: 2, borderRadius: 2, fontSize: isMobile ? '0.75rem' : '0.875rem' }}
                         >
-                            <Typography variant="subtitle2" fontWeight="bold">
+                            <Typography variant={isMobile ? "body2" : "subtitle2"} fontWeight="bold">
                                 {resultat.resume}
                             </Typography>
                         </Alert>
 
                         {resultat.infos && resultat.infos.length > 0 && (
                             <Box sx={{ mt: 2 }}>
-                                <Typography variant="subtitle2" color="success.main" gutterBottom>
+                                <Typography variant={isMobile ? "body2" : "subtitle2"} color="success.main" gutterBottom>
                                     ✅ Informations validées :
                                 </Typography>
-                                <ul style={{ margin: 0, paddingLeft: 20 }}>
+                                <ul style={{ margin: 0, paddingLeft: isMobile ? 16 : 20 }}>
                                     {resultat.infos.map((info, idx) => (
-                                        <li key={idx}><Typography variant="body2">{info}</Typography></li>
+                                        <li key={idx}><Typography variant="body2" sx={{ fontSize: isMobile ? '0.7rem' : '0.875rem' }}>{info}</Typography></li>
                                     ))}
                                 </ul>
                             </Box>
@@ -82,12 +91,12 @@ const VerificationCertificat = () => {
 
                         {resultat.warnings && resultat.warnings.length > 0 && (
                             <Box sx={{ mt: 2 }}>
-                                <Typography variant="subtitle2" color="warning.main" gutterBottom>
+                                <Typography variant={isMobile ? "body2" : "subtitle2"} color="warning.main" gutterBottom>
                                     ⚠️ Avertissements :
                                 </Typography>
-                                <ul style={{ margin: 0, paddingLeft: 20 }}>
+                                <ul style={{ margin: 0, paddingLeft: isMobile ? 16 : 20 }}>
                                     {resultat.warnings.map((warning, idx) => (
-                                        <li key={idx}><Typography variant="body2">{warning}</Typography></li>
+                                        <li key={idx}><Typography variant="body2" sx={{ fontSize: isMobile ? '0.7rem' : '0.875rem' }}>{warning}</Typography></li>
                                     ))}
                                 </ul>
                             </Box>
@@ -95,32 +104,32 @@ const VerificationCertificat = () => {
 
                         {resultat.erreurs && resultat.erreurs.length > 0 && !resultat.valide && (
                             <Box sx={{ mt: 2 }}>
-                                <Typography variant="subtitle2" color="error.main" gutterBottom>
+                                <Typography variant={isMobile ? "body2" : "subtitle2"} color="error.main" gutterBottom>
                                     ❌ Erreurs détectées :
                                 </Typography>
-                                <ul style={{ margin: 0, paddingLeft: 20 }}>
+                                <ul style={{ margin: 0, paddingLeft: isMobile ? 16 : 20 }}>
                                     {resultat.erreurs.map((erreur, idx) => (
-                                        <li key={idx}><Typography variant="body2">{erreur}</Typography></li>
+                                        <li key={idx}><Typography variant="body2" sx={{ fontSize: isMobile ? '0.7rem' : '0.875rem' }}>{erreur}</Typography></li>
                                     ))}
                                 </ul>
                             </Box>
                         )}
 
-                        <Divider sx={{ my: 2 }} />
+                        <Divider sx={{ my: { xs: 1.5, sm: 2 } }} />
 
-                        <Grid container spacing={2}>
+                        <Grid container spacing={isMobile ? 1 : 2}>
                             <Grid item xs={6}>
-                                <Typography variant="caption" color="textSecondary">Statut global</Typography>
+                                <Typography variant="caption" color="textSecondary" sx={{ fontSize: isMobile ? '0.65rem' : '0.75rem' }}>Statut global</Typography>
                                 <Chip 
                                     label={resultat.valide ? "CERTIFICAT VALIDE" : "CERTIFICAT INVALIDE"}
                                     color={resultat.valide ? "success" : "error"}
                                     size="small"
-                                    sx={{ mt: 0.5 }}
+                                    sx={{ mt: 0.5, fontSize: isMobile ? '0.65rem' : '0.75rem' }}
                                 />
                             </Grid>
                             <Grid item xs={6}>
-                                <Typography variant="caption" color="textSecondary">Dernière vérification</Typography>
-                                <Typography variant="body2">{new Date().toLocaleString()}</Typography>
+                                <Typography variant="caption" color="textSecondary" sx={{ fontSize: isMobile ? '0.65rem' : '0.75rem' }}>Dernière vérification</Typography>
+                                <Typography variant="body2" sx={{ fontSize: isMobile ? '0.7rem' : '0.875rem' }}>{new Date().toLocaleString()}</Typography>
                             </Grid>
                         </Grid>
                     </Box>
