@@ -3,7 +3,8 @@ import axios from 'axios';
 import { useDropzone } from 'react-dropzone';
 import { 
   Box, CssBaseline, Snackbar, Alert, useMediaQuery, 
-  Drawer, IconButton, AppBar, Toolbar, Typography 
+  Drawer, IconButton, AppBar, Toolbar, Typography,
+  Container
 } from '@mui/material';
 import MenuIcon from '@mui/icons-material/Menu';
 
@@ -40,14 +41,21 @@ const UserDashboard = () => {
   const isTablet = useMediaQuery('(max-width:960px)');
   const [mobileOpen, setMobileOpen] = useState(false);
 
-  useEffect(() => { fetchUserProfile(); }, []);
-  useEffect(() => { if (view === 'transactions') fetchTransactions(); }, [view]);
+  useEffect(() => { 
+    fetchUserProfile(); 
+  }, []);
+  
+  useEffect(() => { 
+    if (view === 'transactions') fetchTransactions(); 
+  }, [view]);
 
   const fetchUserProfile = async () => {
     try {
       const response = await axios.get('https://memoiresignaturenumerique.onrender.com/api/utilisateur/mon-profil', { withCredentials: true });
       setUserData(response.data);
-    } catch (error) { console.error("Erreur profil:", error); }
+    } catch (error) { 
+      console.error("Erreur profil:", error); 
+    }
   };
 
   const fetchTransactions = async () => {
@@ -57,7 +65,9 @@ const UserDashboard = () => {
       setTransactions(response.data);
     } catch (error) {
       setSnackbar({ open: true, message: "Erreur lors de la récupération des transactions.", severity: 'error' });
-    } finally { setLoadingTransactions(false); }
+    } finally { 
+      setLoadingTransactions(false); 
+    }
   };
 
   const handlePreviewDocument = () => {
@@ -151,27 +161,54 @@ const UserDashboard = () => {
     setMobileOpen(!mobileOpen);
   };
 
+  // Styles responsives
+  const mainContentStyles = {
+    flexGrow: 1,
+    width: { xs: '100%', sm: '100%', md: `calc(100% - 240px)` },
+    mt: { xs: '64px', sm: '64px', md: 0 },
+    transition: 'all 0.3s ease'
+  };
+
+  const contentContainerStyles = {
+    p: { xs: 1.5, sm: 2, md: 3, lg: 4 },
+    pt: { xs: 1.5, sm: 2, md: 3 },
+    maxWidth: '100%',
+    overflowX: 'hidden'
+  };
+
   return (
     <Box sx={{ display: 'flex', bgcolor: '#f4f7f9', minHeight: '100vh' }}>
       <CssBaseline />
       
-      {/* Mobile App Bar */}
+      {/* Mobile App Bar - Amélioré */}
       {isMobile && (
-        <AppBar position="fixed" sx={{ zIndex: (theme) => theme.zIndex.drawer + 1, bgcolor: '#1a237e' }}>
-          <Toolbar>
+        <AppBar 
+          position="fixed" 
+          sx={{ 
+            zIndex: (theme) => theme.zIndex.drawer + 1, 
+            bgcolor: '#1a237e',
+            boxShadow: '0 2px 10px rgba(0,0,0,0.1)'
+          }}
+        >
+          <Toolbar sx={{ minHeight: { xs: 56, sm: 64 }, px: { xs: 1.5, sm: 2 } }}>
             <IconButton
               color="inherit"
               aria-label="open drawer"
               edge="start"
               onClick={handleDrawerToggle}
-              sx={{ mr: 2 }}
+              sx={{ mr: 1.5 }}
             >
               <MenuIcon />
             </IconButton>
-            <Typography variant="h6" noWrap component="div" sx={{ flexGrow: 1 }}>
+            <Typography variant="h6" noWrap component="div" sx={{ flexGrow: 1, fontSize: { xs: '1.1rem', sm: '1.25rem' } }}>
               TrustSign
             </Typography>
-            <Header setView={setView} userData={userData} isMobile={isMobile} />
+            <Header 
+              setView={setView} 
+              userData={userData} 
+              isMobile={isMobile} 
+              isTablet={isTablet}
+            />
           </Toolbar>
         </AppBar>
       )}
@@ -182,6 +219,10 @@ const UserDashboard = () => {
         setView={(newView) => {
           setView(newView);
           if (isMobile) setMobileOpen(false);
+          // Reset step when changing view from signatures
+          if (newView !== 'signatures') {
+            setStep(1);
+          }
         }} 
         openAutoSig={openAutoSig} 
         setOpenAutoSig={setOpenAutoSig} 
@@ -190,24 +231,26 @@ const UserDashboard = () => {
         mobileOpen={mobileOpen}
         handleDrawerToggle={handleDrawerToggle}
         isMobile={isMobile}
+        isTablet={isTablet}
       />
       
-      <Box 
-        component="main" 
-        sx={{ 
-          flexGrow: 1, 
-          width: { xs: '100%', sm: `calc(100% - ${isMobile ? 0 : 240}px)` },
-          mt: { xs: '64px', sm: 0 }
-        }}
-      >
-        {!isMobile && <Header setView={setView} userData={userData} isMobile={isMobile} />}
+      {/* Main Content */}
+      <Box component="main" sx={mainContentStyles}>
+        {/* Header Desktop */}
+        {!isMobile && (
+          <Header 
+            setView={setView} 
+            userData={userData} 
+            isMobile={isMobile} 
+            isTablet={isTablet}
+          />
+        )}
         
-        <Box sx={{ 
-          p: { xs: 2, sm: 3, md: 4 },
-          pt: { xs: 2, sm: 3 }
-        }}>
+        {/* Content Container avec Container MUI pour meilleure gestion responsive */}
+        <Container maxWidth="xl" sx={contentContainerStyles}>
+          {/* Affichage conditionnel des vues avec gestion responsive */}
           {view === 'signatures' && (
-            <>
+            <Box sx={{ width: '100%' }}>
               {step === 1 && (
                 <SignaturesView 
                   getRootProps={getRootProps} 
@@ -218,6 +261,7 @@ const UserDashboard = () => {
                   removeFile={(i) => setUploadedFiles(uploadedFiles.filter((_, idx) => idx !== i))} 
                   nextStep={() => setStep(2)} 
                   isMobile={isMobile}
+                  isTablet={isTablet}
                 />
               )}
               {step === 2 && (
@@ -229,16 +273,18 @@ const UserDashboard = () => {
                   addedSignataires={addedSignataires} 
                   setAddedSignataires={setAddedSignataires} 
                   isMobile={isMobile}
+                  isTablet={isTablet}
                 />
               )}
-            </>
+            </Box>
           )}
 
           {view === 'transactions' && (
             <TransactionsView 
               invitations={transactions} 
               loading={loadingTransactions} 
-              isMobile={isMobile} 
+              isMobile={isMobile}
+              isTablet={isTablet}
             />
           )}
 
@@ -248,6 +294,7 @@ const UserDashboard = () => {
               onStatusRefresh={fetchUserProfile} 
               setSnackbar={setSnackbar} 
               isMobile={isMobile}
+              isTablet={isTablet}
             />
           )}
 
@@ -260,6 +307,7 @@ const UserDashboard = () => {
               handleUpdateProfil={handleUpdateProfil} 
               setSnackbar={setSnackbar}
               isMobile={isMobile}
+              isTablet={isTablet}
             />
           )}
 
@@ -269,6 +317,7 @@ const UserDashboard = () => {
               setPasswordData={setPasswordData} 
               handleChangePassword={handleChangePassword} 
               isMobile={isMobile}
+              isTablet={isTablet}
             />
           )}
           
@@ -277,32 +326,52 @@ const UserDashboard = () => {
               setSnackbar={setSnackbar}
               onSignatureSaved={() => { fetchUserProfile(); }}
               isMobile={isMobile}
+              isTablet={isTablet}
             />
           )}
 
           {view === 'auto-signature' && (
             <AutoSignatureDocument 
               setSnackbar={setSnackbar} 
-              isMobile={isMobile} 
+              isMobile={isMobile}
+              isTablet={isTablet}
             />
           )}
           
           {view === 'liste-auto-signe' && (
             <ListeDocumentsAutoSigne 
               setSnackbar={setSnackbar} 
-              isMobile={isMobile} 
+              isMobile={isMobile}
+              isTablet={isTablet}
             />
           )}
-        </Box>
+        </Container>
       </Box>
 
+      {/* Snackbar amélioré */}
       <Snackbar 
         open={snackbar.open} 
         autoHideDuration={4000} 
         onClose={() => setSnackbar({...snackbar, open: false})}
-        anchorOrigin={{ vertical: 'bottom', horizontal: isMobile ? 'center' : 'left' }}
+        anchorOrigin={{ 
+          vertical: 'bottom', 
+          horizontal: isMobile ? 'center' : 'left' 
+        }}
+        sx={{ 
+          bottom: { xs: 16, sm: 24 },
+          left: { xs: 16, sm: isMobile ? 16 : 24, md: 24 },
+          right: { xs: 16, sm: isMobile ? 16 : 'auto' }
+        }}
       >
-        <Alert severity={snackbar.severity} variant="filled">
+        <Alert 
+          severity={snackbar.severity} 
+          variant="filled"
+          sx={{ 
+            borderRadius: '12px',
+            width: '100%',
+            fontSize: { xs: '0.875rem', sm: '1rem' }
+          }}
+        >
           {snackbar.message}
         </Alert>
       </Snackbar>

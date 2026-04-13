@@ -1,67 +1,99 @@
 import React, { useState, useEffect } from 'react';
 import { Download, Delete, PictureAsPdf } from '@mui/icons-material';
 import axios from 'axios';
-import { Box, Button, Typography, Paper, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Stack } from '@mui/material';
+import { Box, Button, Typography, Paper, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Stack, useMediaQuery, Card, CardContent } from '@mui/material';
 
-const ListeDocumentsAutoSignes = ({ setSnackbar }) => {
+const ListeDocumentsAutoSignes = ({ setSnackbar, isMobile = false }) => {
     const [documents, setDocuments] = useState([]);
-    // ✅ CORRECTION : Pointer vers le bon contrôleur
     const API_BASE_URL = 'https://memoiresignaturenumerique.onrender.com/api/documents';
+    const isSmallScreen = useMediaQuery('(max-width:600px)');
+    const mobile = isMobile || isSmallScreen;
 
     const fetchDocuments = async () => {
         try {
-            // ✅ CORRECTION : Utiliser le mapping qu'on a créé au Backend
             const res = await axios.get(`${API_BASE_URL}/liste-signes-auto`, { withCredentials: true });
             setDocuments(res.data);
         } catch (e) {
-            console.error("Erreur chargement liste :", e);
-            setSnackbar({ open: true, message: "Erreur lors du chargement des documents", severity: 'error' });
+            console.error("Erreur:", e);
+            setSnackbar({ open: true, message: "Erreur lors du chargement", severity: 'error' });
         }
     };
 
-    useEffect(() => {
-        fetchDocuments();
-    }, []);
+    useEffect(() => { fetchDocuments(); }, []);
 
     const handleDelete = async (id) => {
-        if (window.confirm("Supprimer définitivement ce document signé du serveur ?")) {
+        if (window.confirm("Supprimer définitivement ce document ?")) {
             try {
-                // ✅ CORRECTION : L'URL de suppression est maintenant sous /api/documents/
                 await axios.delete(`${API_BASE_URL}/supprimer/${id}`, { withCredentials: true });
                 setSnackbar({ open: true, message: "Document supprimé", severity: 'info' });
-                fetchDocuments(); 
+                fetchDocuments();
             } catch (e) {
-                setSnackbar({ open: true, message: "Erreur suppression (Vérifiez vos droits)", severity: 'error' });
+                setSnackbar({ open: true, message: "Erreur suppression", severity: 'error' });
             }
         }
     };
 
-const handleDownload = async (id, nom) => {
-    try {
-        const response = await axios.get(`${API_BASE_URL}/download/${id}`, {
-            responseType: 'blob', // Important pour le PDF binaire
-            withCredentials: true
-        });
+    const handleDownload = async (id, nom) => {
+        try {
+            const response = await axios.get(`${API_BASE_URL}/download/${id}`, { responseType: 'blob', withCredentials: true });
+            const url = window.URL.createObjectURL(new Blob([response.data]));
+            const link = document.createElement('a');
+            link.href = url;
+            const nomFichier = nom.endsWith('.pdf') ? nom : `${nom}.pdf`;
+            link.setAttribute('download', nomFichier);
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            URL.revokeObjectURL(url);
+        } catch (e) {
+            setSnackbar({ open: true, message: "Erreur téléchargement", severity: 'error' });
+        }
+    };
 
-        const url = window.URL.createObjectURL(new Blob([response.data]));
-        const link = document.createElement('a');
-        link.href = url;
-        
-        // On s'assure que l'extension .pdf est présente
-        const nomFichier = nom.endsWith('.pdf') ? nom : `${nom}.pdf`;
-        
-        link.setAttribute('download', nomFichier); 
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link); 
-    } catch (e) {
-        setSnackbar({ open: true, message: "Le fichier signé est introuvable", severity: 'error' });
+    if (mobile) {
+        return (
+            <Box sx={{ p: { xs: 2, sm: 3 } }}>
+                <Typography variant="h6" sx={{ mb: 2, fontWeight: 'bold' }}>Mes Documents Signés</Typography>
+                <Stack spacing={2}>
+                    {documents.length === 0 ? (
+                        <Paper sx={{ p: 3, textAlign: 'center' }}>
+                            <Typography variant="body2" color="textSecondary">Aucun document signé trouvé.</Typography>
+                        </Paper>
+                    ) : (
+                        documents.map((doc) => (
+                            <Card key={doc.id} sx={{ borderRadius: '12px' }}>
+                                <CardContent>
+                                    <Stack spacing={1.5}>
+                                        <Stack direction="row" spacing={1} alignItems="center">
+                                            <PictureAsPdf color="error" />
+                                            <Typography variant="body2" fontWeight="600" sx={{ flex: 1 }}>
+                                                {doc.nomFichier?.length > 40 ? doc.nomFichier.substring(0, 40) + '...' : doc.nomFichier}
+                                            </Typography>
+                                        </Stack>
+                                        <Typography variant="caption" color="textSecondary">
+                                            Date: {doc.dateCreation ? new Date(doc.dateCreation).toLocaleDateString() : 'N/A'}
+                                        </Typography>
+                                        <Stack direction="row" spacing={1}>
+                                            <Button size="small" variant="contained" color="success" startIcon={<Download />} onClick={() => handleDownload(doc.id, doc.nomFichier)} fullWidth>
+                                                Télécharger
+                                            </Button>
+                                            <Button size="small" variant="outlined" color="error" startIcon={<Delete />} onClick={() => handleDelete(doc.id)} fullWidth>
+                                                Supprimer
+                                            </Button>
+                                        </Stack>
+                                    </Stack>
+                                </CardContent>
+                            </Card>
+                        ))
+                    )}
+                </Stack>
+            </Box>
+        );
     }
-};
 
     return (
-        <Box sx={{ p: 3 }}>
-            <Typography variant="h6" sx={{ mb: 2 }}>Mes Documents Signés</Typography>
+        <Box sx={{ p: { xs: 2, sm: 3 } }}>
+            <Typography variant="h6" sx={{ mb: 2, fontWeight: 'bold' }}>Mes Documents Signés</Typography>
             <TableContainer component={Paper} elevation={3}>
                 <Table>
                     <TableHead>
@@ -82,31 +114,16 @@ const handleDownload = async (id, nom) => {
                                     <TableCell>
                                         <Stack direction="row" spacing={1} alignItems="center">
                                             <PictureAsPdf color="error" />
-                                            {/* ✅ ATTENTION : Vérifie si c'est doc.nomAffiche ou doc.nomFichier dans ton Java */}
-                                            <Typography variant="body2">{doc.nomFichier || doc.nomAffiche}</Typography>
+                                            <Typography variant="body2">{doc.nomFichier}</Typography>
                                         </Stack>
                                     </TableCell>
-                                    <TableCell>
-                                        {doc.dateCreation ? new Date(doc.dateCreation).toLocaleDateString() : 'N/A'}
-                                    </TableCell>
+                                    <TableCell>{doc.dateCreation ? new Date(doc.dateCreation).toLocaleDateString() : 'N/A'}</TableCell>
                                     <TableCell align="center">
                                         <Stack direction="row" spacing={1} justifyContent="center">
-                                            <Button 
-                                                size="small"
-                                                variant="contained" 
-                                                color="success" 
-                                                startIcon={<Download />}
-                                                onClick={() => handleDownload(doc.id, doc.nomFichier)}
-                                            >
+                                            <Button size="small" variant="contained" color="success" startIcon={<Download />} onClick={() => handleDownload(doc.id, doc.nomFichier)}>
                                                 Télécharger
                                             </Button>
-                                            <Button 
-                                                size="small"
-                                                variant="outlined" 
-                                                color="error" 
-                                                startIcon={<Delete />}
-                                                onClick={() => handleDelete(doc.id)}
-                                            >
+                                            <Button size="small" variant="outlined" color="error" startIcon={<Delete />} onClick={() => handleDelete(doc.id)}>
                                                 Supprimer
                                             </Button>
                                         </Stack>
