@@ -159,7 +159,7 @@ const Home = () => {
     }}>
       
       {/* NAVBAR */}
-      <AppBar position="fixed" elevation={0} sx={{ bgcolor: 'rgba(11, 30, 57, 0.8)', backdropFilter: 'blur(15px)', borderBottom: `1px solid rgba(255, 193, 7, 0.2)` }}>
+      <AppBar position="fixed" elevation={0} sx={{ bgcolor: 'rgba(64, 123, 51, 0.8)', backdropFilter: 'blur(15px)', borderBottom: `1px solid rgba(255, 193, 7, 0.2)` }}>
         <Container maxWidth="lg">
           <Toolbar sx={{ justifyContent: 'space-between', height: { xs: 70, sm: 80 }, px: { xs: 1, sm: 2 } }}>
             <Stack direction="row" alignItems="center" spacing={isMobile ? 1 : 1.5}>
