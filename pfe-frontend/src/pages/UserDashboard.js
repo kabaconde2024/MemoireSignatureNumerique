@@ -184,7 +184,7 @@ const UserDashboard = () => {
                   setAddedSignataires={setAddedSignataires} 
                 />
               )}
-              {step === 3 && (
+             {/* {step === 3 && (
                 <SignaturePad 
                   fileUrl={fileUrl} 
                   signataireNom={`${currentSignataire?.prenom} ${currentSignataire?.nom}`} 
@@ -193,7 +193,7 @@ const UserDashboard = () => {
                 />
               )}
             </>
-          )}
+          )}*/}
 
           {/* Transactions */}
           {view === 'transactions' && (
