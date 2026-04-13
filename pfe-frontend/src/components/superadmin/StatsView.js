@@ -1,10 +1,9 @@
-// components/superadmin/StatsView.jsx
 import React, { useState, useEffect } from 'react';
 import { 
     Box, Grid, Card, CardContent, Typography, Stack, 
     Avatar, LinearProgress, Paper, Table, TableBody, 
     TableCell, TableContainer, TableHead, TableRow, Chip,
-    Tooltip
+    Tooltip, useMediaQuery
 } from '@mui/material';
 import { 
     People, Business, Description, Security, 
@@ -13,7 +12,7 @@ import {
 } from '@mui/icons-material';
 import axios from 'axios';
 
-const StatsView = ({ setSnackbar }) => {
+const StatsView = ({ setSnackbar, isMobile = false, isTablet = false }) => {
     const [stats, setStats] = useState({
         totalUsers: 0,
         actifs: 0,
@@ -26,13 +25,15 @@ const StatsView = ({ setSnackbar }) => {
         nonSignes: 0,
         pendingCertificates: 0,
         activeCertificates: 0,
-        // ✅ Nouveaux stats par type de signature
         signaturesSimple: 0,
         signaturesPKI: 0,
         signaturesAuto: 0
     });
     const [recentActivities, setRecentActivities] = useState([]);
     const [loading, setLoading] = useState(true);
+    
+    const isSmallScreen = useMediaQuery('(max-width:600px)');
+    const mobile = isMobile || isSmallScreen;
 
     useEffect(() => {
         const fetchStats = async () => {
@@ -57,7 +58,6 @@ const StatsView = ({ setSnackbar }) => {
                     nonSignes: docsRes.data.nonSignes || 0,
                     pendingCertificates: certRes.data.pending || 0,
                     activeCertificates: certRes.data.active || 0,
-                    // ✅ Nouveaux stats
                     signaturesSimple: signaturesRes.data.simple || 0,
                     signaturesPKI: signaturesRes.data.pki || 0,
                     signaturesAuto: signaturesRes.data.auto || 0
@@ -94,28 +94,29 @@ const StatsView = ({ setSnackbar }) => {
     if (loading) return <LinearProgress />;
 
     return (
-        <Box>
-            <Typography variant="h5" fontWeight="800" sx={{ mb: 4, color: '#1a237e' }}>
+        <Box sx={{ px: { xs: 0, sm: 1 } }}>
+            <Typography variant={mobile ? "h6" : "h5"} fontWeight="800" sx={{ mb: mobile ? 2 : 4, color: '#1a237e' }}>
                 Tableau de bord
             </Typography>
             
-            {/* Statistiques générales */}
-            <Typography variant="subtitle1" fontWeight="bold" sx={{ mb: 2, color: '#64748b' }}>
+            <Typography variant="subtitle1" fontWeight="bold" sx={{ mb: 2, color: '#64748b', fontSize: mobile ? '0.8rem' : '0.9rem' }}>
                 Vue d'ensemble
             </Typography>
-            <Grid container spacing={3} sx={{ mb: 5 }}>
+            <Grid container spacing={mobile ? 2 : 3} sx={{ mb: mobile ? 3 : 5 }}>
                 {statCards.map((card, idx) => (
                     <Grid item xs={12} sm={6} md={4} lg={3} key={idx}>
                         <Card sx={{ borderRadius: '16px', boxShadow: '0px 2px 8px rgba(0,0,0,0.05)' }}>
-                            <CardContent>
+                            <CardContent sx={{ p: mobile ? 1.5 : 2 }}>
                                 <Stack direction="row" justifyContent="space-between" alignItems="center">
                                     <Box>
-                                        <Typography variant="caption" color="textSecondary">{card.title}</Typography>
-                                        <Typography variant="h4" fontWeight="bold" sx={{ color: card.color }}>
+                                        <Typography variant="caption" color="textSecondary" sx={{ fontSize: mobile ? '0.65rem' : '0.75rem' }}>
+                                            {card.title}
+                                        </Typography>
+                                        <Typography variant={mobile ? "h5" : "h4"} fontWeight="bold" sx={{ color: card.color }}>
                                             {card.value}
                                         </Typography>
                                     </Box>
-                                    <Avatar sx={{ bgcolor: card.bg, color: card.color, width: 48, height: 48 }}>
+                                    <Avatar sx={{ bgcolor: card.bg, color: card.color, width: mobile ? 40 : 48, height: mobile ? 40 : 48 }}>
                                         {card.icon}
                                     </Avatar>
                                 </Stack>
@@ -125,24 +126,25 @@ const StatsView = ({ setSnackbar }) => {
                 ))}
             </Grid>
 
-            {/* Statistiques par type de signature */}
-            <Typography variant="subtitle1" fontWeight="bold" sx={{ mb: 2, color: '#64748b' }}>
+            <Typography variant="subtitle1" fontWeight="bold" sx={{ mb: 2, color: '#64748b', fontSize: mobile ? '0.8rem' : '0.9rem' }}>
                 Répartition des signatures
             </Typography>
-            <Grid container spacing={3} sx={{ mb: 5 }}>
+            <Grid container spacing={mobile ? 2 : 3} sx={{ mb: mobile ? 3 : 5 }}>
                 {signatureCards.map((card, idx) => (
                     <Grid item xs={12} sm={6} md={4} key={idx}>
                         <Tooltip title={card.description} arrow>
                             <Card sx={{ borderRadius: '16px', boxShadow: '0px 2px 8px rgba(0,0,0,0.05)' }}>
-                                <CardContent>
+                                <CardContent sx={{ p: mobile ? 1.5 : 2 }}>
                                     <Stack direction="row" justifyContent="space-between" alignItems="center">
                                         <Box>
-                                            <Typography variant="caption" color="textSecondary">{card.title}</Typography>
-                                            <Typography variant="h4" fontWeight="bold" sx={{ color: card.color }}>
+                                            <Typography variant="caption" color="textSecondary" sx={{ fontSize: mobile ? '0.65rem' : '0.75rem' }}>
+                                                {card.title}
+                                            </Typography>
+                                            <Typography variant={mobile ? "h5" : "h4"} fontWeight="bold" sx={{ color: card.color }}>
                                                 {card.value}
                                             </Typography>
                                         </Box>
-                                        <Avatar sx={{ bgcolor: card.bg, color: card.color, width: 48, height: 48 }}>
+                                        <Avatar sx={{ bgcolor: card.bg, color: card.color, width: mobile ? 40 : 48, height: mobile ? 40 : 48 }}>
                                             {card.icon}
                                         </Avatar>
                                     </Stack>
@@ -153,75 +155,72 @@ const StatsView = ({ setSnackbar }) => {
                 ))}
             </Grid>
 
-            {/* Dernières activités avec type de signature */}
-            <Typography variant="h6" fontWeight="bold" sx={{ mb: 2, color: '#1a237e' }}>
+            <Typography variant={mobile ? "subtitle1" : "h6"} fontWeight="bold" sx={{ mb: 2, color: '#1a237e' }}>
                 Dernières activités
             </Typography>
-            <TableContainer component={Paper} sx={{ borderRadius: '12px' }}>
-                <Table>
-                    <TableHead sx={{ bgcolor: '#f5f5f5' }}>
-                        <TableRow>
-                            <TableCell><b>Type</b></TableCell>
-                            <TableCell><b>Action</b></TableCell>
-                            <TableCell><b>Utilisateur</b></TableCell>
-                            <TableCell><b>Date</b></TableCell>
-                            <TableCell><b>Statut</b></TableCell>
-                        </TableRow>
-                    </TableHead>
-                    <TableBody>
-                        {recentActivities.length === 0 ? (
-                            <TableRow><TableCell colSpan={5} align="center">Aucune activité récente</TableCell></TableRow>
-                        ) : (
-                            recentActivities.map((act, idx) => (
-                                <TableRow key={idx}>
-                                    <TableCell>
-                                        {act.typeSignature === 'pki' && (
-                                            <Chip 
-                                                icon={<Fingerprint />} 
-                                                label="PKI" 
-                                                size="small" 
-                                                color="success" 
-                                                variant="outlined"
-                                            />
-                                        )}
-                                        {act.typeSignature === 'simple' && (
-                                            <Chip 
-                                                icon={<Draw />} 
-                                                label="Simple" 
-                                                size="small" 
-                                                color="warning" 
-                                                variant="outlined"
-                                            />
-                                        )}
-                                        {act.typeSignature === 'auto' && (
-                                            <Chip 
-                                                icon={<AutoFixHigh />} 
-                                                label="Auto" 
-                                                size="small" 
-                                                color="info" 
-                                                variant="outlined"
-                                            />
-                                        )}
-                                        {!act.typeSignature && (
-                                            <Chip label="Invitation" size="small" variant="outlined" />
-                                        )}
-                                    </TableCell>
-                                    <TableCell>{act.action}</TableCell>
-                                    <TableCell>{act.user}</TableCell>
-                                    <TableCell>{new Date(act.date).toLocaleString()}</TableCell>
-                                    <TableCell>
-                                        <Chip 
-                                            label={act.status} 
-                                            size="small" 
-                                            color={act.status === 'Succès' ? 'success' : 'default'} 
-                                        />
-                                    </TableCell>
-                                </TableRow>
-                            ))
-                        )}
-                    </TableBody>
-                </Table>
-            </TableContainer>
+            
+            {mobile ? (
+                // Version mobile - cartes
+                <Stack spacing={2}>
+                    {recentActivities.length === 0 ? (
+                        <Paper sx={{ p: 3, textAlign: 'center' }}>
+                            <Typography variant="body2" color="textSecondary">Aucune activité récente</Typography>
+                        </Paper>
+                    ) : (
+                        recentActivities.map((act, idx) => (
+                            <Paper key={idx} sx={{ p: 2, borderRadius: '12px' }}>
+                                <Stack spacing={1}>
+                                    <Stack direction="row" justifyContent="space-between" alignItems="center">
+                                        {act.typeSignature === 'pki' && <Chip icon={<Fingerprint />} label="PKI" size="small" color="success" variant="outlined" />}
+                                        {act.typeSignature === 'simple' && <Chip icon={<Draw />} label="Simple" size="small" color="warning" variant="outlined" />}
+                                        {act.typeSignature === 'auto' && <Chip icon={<AutoFixHigh />} label="Auto" size="small" color="info" variant="outlined" />}
+                                        {!act.typeSignature && <Chip label="Invitation" size="small" variant="outlined" />}
+                                        <Chip label={act.status} size="small" color={act.status === 'Succès' ? 'success' : 'default'} />
+                                    </Stack>
+                                    <Typography variant="body2" fontWeight="bold">{act.action}</Typography>
+                                    <Typography variant="caption" color="textSecondary">{act.user}</Typography>
+                                    <Typography variant="caption" color="textSecondary">{new Date(act.date).toLocaleString()}</Typography>
+                                </Stack>
+                            </Paper>
+                        ))
+                    )}
+                </Stack>
+            ) : (
+                // Version desktop - tableau
+                <TableContainer component={Paper} sx={{ borderRadius: '12px', overflowX: 'auto' }}>
+                    <Table sx={{ minWidth: 650 }}>
+                        <TableHead sx={{ bgcolor: '#f5f5f5' }}>
+                            <TableRow>
+                                <TableCell><b>Type</b></TableCell>
+                                <TableCell><b>Action</b></TableCell>
+                                <TableCell><b>Utilisateur</b></TableCell>
+                                <TableCell><b>Date</b></TableCell>
+                                <TableCell><b>Statut</b></TableCell>
+                            </TableRow>
+                        </TableHead>
+                        <TableBody>
+                            {recentActivities.length === 0 ? (
+                                <TableRow><TableCell colSpan={5} align="center">Aucune activité récente</TableCell></TableRow>
+                            ) : (
+                                recentActivities.map((act, idx) => (
+                                    <TableRow key={idx}>
+                                        <TableCell>
+                                            {act.typeSignature === 'pki' && <Chip icon={<Fingerprint />} label="PKI" size="small" color="success" variant="outlined" />}
+                                            {act.typeSignature === 'simple' && <Chip icon={<Draw />} label="Simple" size="small" color="warning" variant="outlined" />}
+                                            {act.typeSignature === 'auto' && <Chip icon={<AutoFixHigh />} label="Auto" size="small" color="info" variant="outlined" />}
+                                            {!act.typeSignature && <Chip label="Invitation" size="small" variant="outlined" />}
+                                        </TableCell>
+                                        <TableCell>{act.action}</TableCell>
+                                        <TableCell>{act.user}</TableCell>
+                                        <TableCell>{new Date(act.date).toLocaleString()}</TableCell>
+                                        <TableCell><Chip label={act.status} size="small" color={act.status === 'Succès' ? 'success' : 'default'} /></TableCell>
+                                    </TableRow>
+                                ))
+                            )}
+                        </TableBody>
+                    </Table>
+                </TableContainer>
+            )}
         </Box>
     );
 };
