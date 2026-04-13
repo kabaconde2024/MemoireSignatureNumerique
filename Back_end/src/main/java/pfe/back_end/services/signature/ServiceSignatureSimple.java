@@ -11,7 +11,8 @@ import pfe.back_end.services.notification.ServiceSmsOtp;
 import pfe.back_end.services.authentification.ConvertisseurCoordonneesPdf;
 import pfe.back_end.services.timestamp.ServiceHorodatage;
 import pfe.back_end.repositories.sql.DocumentRepository;
-
+import pfe.back_end.modeles.entites.Document;
+import pfe.back_end.modeles.entites.StatutDocument;
 import java.io.*;
 import java.security.MessageDigest;
 import java.time.LocalDateTime;
