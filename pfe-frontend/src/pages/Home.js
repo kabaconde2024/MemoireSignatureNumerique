@@ -208,7 +208,7 @@ const Home = () => {
               sx={{ 
                 pb: 2, 
                 px: 2, 
-                bgcolor: 'rgba(11, 30, 57, 0.95)', 
+                bgcolor: 'rgba(53, 114, 152, 0.95)', 
                 backdropFilter: 'blur(15px)',
                 borderTop: '1px solid rgba(255,193,7,0.2)'
               }}
