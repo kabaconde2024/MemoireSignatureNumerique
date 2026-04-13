@@ -191,9 +191,9 @@ const UserDashboard = () => {
                   signatureType={selectedSignatureType} 
                   onConfirm={handleFinalConfirm} 
                 />
-              )}
+              )}  */}
             </>
-          )}*/}
+          )}
 
           {/* Transactions */}
           {view === 'transactions' && (
