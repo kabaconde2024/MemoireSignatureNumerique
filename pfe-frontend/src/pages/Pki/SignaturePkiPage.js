@@ -38,6 +38,9 @@ const SignaturePkiPage = () => {
     const [isMobile, setIsMobile] = useState(window.innerWidth <= 768);
     const [isTablet, setIsTablet] = useState(window.innerWidth <= 1024 && window.innerWidth > 768);
 
+    // ✅ CORRECTION : Créer l'instance du plugin ICI (après les useState)
+    const defaultLayoutPluginInstance = defaultLayoutPlugin();
+
     useEffect(() => {
         const handleResize = () => {
             setIsMobile(window.innerWidth <= 768);
@@ -47,8 +50,6 @@ const SignaturePkiPage = () => {
         window.addEventListener('resize', handleResize);
         return () => window.removeEventListener('resize', handleResize);
     }, []);
-
-    const defaultLayoutPluginInstance = defaultLayoutPlugin();
 
     // 1. Vérifier authentification et certificat
     useEffect(() => {

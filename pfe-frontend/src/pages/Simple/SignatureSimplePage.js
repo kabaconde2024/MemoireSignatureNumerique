@@ -46,6 +46,9 @@ const SignatureSimplePage = () => {
     const [isMobile, setIsMobile] = useState(window.innerWidth <= 768);
     const [isTablet, setIsTablet] = useState(window.innerWidth <= 1024 && window.innerWidth > 768);
 
+    // ✅ CORRECTION : Créer l'instance du plugin ICI (dans le composant)
+    const defaultLayoutPluginInstance = defaultLayoutPlugin();
+
     useEffect(() => {
         const handleResize = () => {
             setIsMobile(window.innerWidth <= 768);
