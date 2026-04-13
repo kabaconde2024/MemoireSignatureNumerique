@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { 
     Box, TextField, Button, Alert, InputAdornment, 
-    CircularProgress, Typography, Link, Divider 
+    CircularProgress, Typography, Link, Divider, useMediaQuery
 } from '@mui/material';
 import { Lock, Email, Security } from '@mui/icons-material';
 import API from '../../services/api';
@@ -18,6 +18,10 @@ const Connexion = ({ onSwitch, onLoginSuccess }) => {
     
     const navigate = useNavigate();
     const location = useLocation();
+
+    // Responsive detection
+    const isMobile = useMediaQuery('(max-width:600px)');
+    const isSmallMobile = useMediaQuery('(max-width:380px)');
 
     const query = new URLSearchParams(location.search);
     const redirectPath = query.get('redirect');
@@ -126,65 +130,210 @@ const Connexion = ({ onSwitch, onLoginSuccess }) => {
     };
 
     return (
-        <Box sx={{ p: 4, bgcolor: 'rgba(255, 255, 255, 0.95)', backdropFilter: 'blur(15px)', borderRadius: 6 }}>
-            <Box sx={{ mb: 4, textAlign: 'center' }}>
-                <Typography variant="h4" fontWeight="900" sx={{ color: '#000', mb: 1 }}>
+        <Box sx={{ 
+            p: { xs: 2.5, sm: 3, md: 4 }, 
+            bgcolor: 'rgba(255, 255, 255, 0.95)', 
+            backdropFilter: 'blur(15px)', 
+            borderRadius: { xs: 4, sm: 6 },
+            maxWidth: { xs: '100%', sm: 500, md: 550 },
+            mx: 'auto',
+            width: '100%'
+        }}>
+            <Box sx={{ mb: { xs: 2, sm: 3, md: 4 }, textAlign: 'center' }}>
+                <Typography 
+                    variant={isMobile ? "h5" : "h4"} 
+                    fontWeight="900" 
+                    sx={{ 
+                        color: '#000', 
+                        mb: 1,
+                        fontSize: isSmallMobile ? '1.25rem' : 'inherit'
+                    }}
+                >
                     {isMfaRequired ? "SÉCURITÉ" : "CONNEXION"}
                 </Typography>
-                <Box sx={{ width: 60, height: 4, bgcolor: '#3b82f6', mx: 'auto', borderRadius: 2 }} />
+                <Box sx={{ 
+                    width: { xs: 40, sm: 60 }, 
+                    height: 4, 
+                    bgcolor: '#3b82f6', 
+                    mx: 'auto', 
+                    borderRadius: 2 
+                }} />
             </Box>
 
-            {error && <Alert severity="error" sx={{ mb: 3 }}>{error}</Alert>}
+            {error && (
+                <Alert 
+                    severity="error" 
+                    sx={{ 
+                        mb: { xs: 2, sm: 3 }, 
+                        borderRadius: '12px',
+                        fontSize: { xs: '0.75rem', sm: '0.875rem' }
+                    }}
+                >
+                    {error}
+                </Alert>
+            )}
 
             {!isMfaRequired ? (
                 <Box>
-                    <Box sx={{ mb: 3, display: 'flex', justifyContent: 'center' }}>
+                    <Box sx={{ mb: { xs: 2, sm: 3 }, display: 'flex', justifyContent: 'center' }}>
                         <GoogleLoginNative onSuccess={handleGoogleSuccess} />
                     </Box>
-                    <Divider sx={{ mb: 3 }}>
-                        <Typography variant="caption" sx={{ color: '#000', fontWeight: 600, px: 1 }}>OU AVEC EMAIL</Typography>
+                    <Divider sx={{ mb: { xs: 2, sm: 3 } }}>
+                        <Typography 
+                            variant="caption" 
+                            sx={{ 
+                                color: '#000', 
+                                fontWeight: 600, 
+                                px: 1,
+                                fontSize: { xs: '0.65rem', sm: '0.75rem' }
+                            }}
+                        >
+                            OU AVEC EMAIL
+                        </Typography>
                     </Divider>
                     <TextField 
-                        fullWidth label="Email" margin="normal" required value={email}
+                        fullWidth 
+                        label="Email" 
+                        margin="normal" 
+                        required 
+                        value={email}
                         onChange={(e) => setEmail(e.target.value)}
-                        InputProps={{ startAdornment: <InputAdornment position="start"><Email sx={{ color: '#000' }} /></InputAdornment> }}
+                        InputProps={{ 
+                            startAdornment: <InputAdornment position="start"><Email sx={{ color: '#000', fontSize: isMobile ? 20 : 24 }} /></InputAdornment> 
+                        }}
                         sx={fieldStyle}
+                        size={isMobile ? "small" : "medium"}
                     />
                     <TextField 
-                        fullWidth label="Mot de passe" type="password" margin="normal" required value={motDePasse}
+                        fullWidth 
+                        label="Mot de passe" 
+                        type="password" 
+                        margin="normal" 
+                        required 
+                        value={motDePasse}
                         onChange={(e) => setMotDePasse(e.target.value)}
-                        InputProps={{ startAdornment: <InputAdornment position="start"><Lock sx={{ color: '#000' }} /></InputAdornment> }}
+                        InputProps={{ 
+                            startAdornment: <InputAdornment position="start"><Lock sx={{ color: '#000', fontSize: isMobile ? 20 : 24 }} /></InputAdornment> 
+                        }}
                         sx={fieldStyle}
+                        size={isMobile ? "small" : "medium"}
                     />
                     <Button 
-                        fullWidth variant="contained" onClick={handleLogin} disabled={loading}
-                        sx={{ mt: 3, py: 2, bgcolor: '#1c1212', fontWeight: '900', "&:hover": { bgcolor: '#333' } }}
+                        fullWidth 
+                        variant="contained" 
+                        onClick={handleLogin} 
+                        disabled={loading}
+                        sx={{ 
+                            mt: { xs: 2, sm: 3 }, 
+                            py: { xs: 1.5, sm: 2 }, 
+                            bgcolor: '#1c1212', 
+                            fontWeight: '900', 
+                            fontSize: { xs: '0.875rem', sm: '1rem' },
+                            "&:hover": { bgcolor: '#333' } 
+                        }}
                     >
-                        {loading ? <CircularProgress size={24} color="inherit" /> : "Se connecter"}
+                        {loading ? <CircularProgress size={isMobile ? 20 : 24} color="inherit" /> : "Se connecter"}
                     </Button>
-                    <Box sx={{ mt: 3, display: 'flex', flexDirection: 'column', gap: 1, alignItems: 'center' }}>
-                        <Link onClick={() => navigate('/mot-de-passe-oublie')} sx={{ cursor: 'pointer', color: '#3b82f6', fontWeight: 700, fontSize: '0.85rem', textDecoration: 'none' }}>Mot de passe oublié ?</Link>
-                        <Link onClick={() => onSwitch ? onSwitch() : navigate('/inscription')} sx={{ cursor: 'pointer', color: '#000', fontWeight: 700, fontSize: '0.85rem', opacity: 0.7, textDecoration: 'none' }}>Pas de compte ? Créer un profil</Link>
+                    <Box sx={{ 
+                        mt: { xs: 2, sm: 3 }, 
+                        display: 'flex', 
+                        flexDirection: 'column', 
+                        gap: { xs: 0.5, sm: 1 }, 
+                        alignItems: 'center' 
+                    }}>
+                        <Link 
+                            onClick={() => navigate('/mot-de-passe-oublie')} 
+                            sx={{ 
+                                cursor: 'pointer', 
+                                color: '#3b82f6', 
+                                fontWeight: 700, 
+                                fontSize: { xs: '0.7rem', sm: '0.85rem' }, 
+                                textDecoration: 'none',
+                                '&:hover': { textDecoration: 'underline' }
+                            }}
+                        >
+                            Mot de passe oublié ?
+                        </Link>
+                        <Link 
+                            onClick={() => onSwitch ? onSwitch() : navigate('/inscription')} 
+                            sx={{ 
+                                cursor: 'pointer', 
+                                color: '#000', 
+                                fontWeight: 700, 
+                                fontSize: { xs: '0.7rem', sm: '0.85rem' }, 
+                                opacity: 0.7, 
+                                textDecoration: 'none',
+                                '&:hover': { textDecoration: 'underline', opacity: 1 }
+                            }}
+                        >
+                            Pas de compte ? Créer un profil
+                        </Link>
                     </Box>
                 </Box>
             ) : (
                 <Box>
-                    <Typography variant="body2" sx={{ mb: 3, textAlign: 'center', color: '#000' }}>
+                    <Typography 
+                        variant="body2" 
+                        sx={{ 
+                            mb: { xs: 2, sm: 3 }, 
+                            textAlign: 'center', 
+                            color: '#000',
+                            fontSize: { xs: '0.75rem', sm: '0.875rem' },
+                            wordBreak: 'break-word'
+                        }}
+                    >
                         Entrez le code envoyé à <strong>{email}</strong>
                     </Typography>
                     <TextField 
-                        fullWidth label="Code OTP" margin="normal" required value={otpCode}
+                        fullWidth 
+                        label="Code OTP" 
+                        margin="normal" 
+                        required 
+                        value={otpCode}
                         onChange={(e) => setOtpCode(e.target.value)}
-                        InputProps={{ startAdornment: <InputAdornment position="start"><Security sx={{ color: '#000' }} /></InputAdornment> }}
+                        InputProps={{ 
+                            startAdornment: <InputAdornment position="start"><Security sx={{ color: '#000', fontSize: isMobile ? 20 : 24 }} /></InputAdornment>,
+                            inputProps: { 
+                                maxLength: 6,
+                                style: { 
+                                    textAlign: 'center', 
+                                    letterSpacing: isMobile ? '2px' : '4px', 
+                                    fontSize: isMobile ? '1.1rem' : '1.25rem',
+                                    fontWeight: 600
+                                }
+                            }
+                        }}
                         sx={fieldStyle}
+                        size={isMobile ? "small" : "medium"}
                     />
                     <Button 
-                        fullWidth variant="contained" onClick={handleVerifyOtp} disabled={loading}
-                        sx={{ mt: 3, py: 2, bgcolor: '#3b82f6', fontWeight: '900' }}
+                        fullWidth 
+                        variant="contained" 
+                        onClick={handleVerifyOtp} 
+                        disabled={loading}
+                        sx={{ 
+                            mt: { xs: 2, sm: 3 }, 
+                            py: { xs: 1.5, sm: 2 }, 
+                            bgcolor: '#3b82f6', 
+                            fontWeight: '900',
+                            fontSize: { xs: '0.875rem', sm: '1rem' }
+                        }}
                     >
-                        {loading ? <CircularProgress size={24} color="inherit" /> : "Vérifier le code"}
+                        {loading ? <CircularProgress size={isMobile ? 20 : 24} color="inherit" /> : "Vérifier le code"}
                     </Button>
-                    <Button fullWidth variant="text" onClick={() => setIsMfaRequired(false)} sx={{ mt: 1, color: '#000', fontSize: '0.75rem' }}>Retour</Button>
+                    <Button 
+                        fullWidth 
+                        variant="text" 
+                        onClick={() => setIsMfaRequired(false)} 
+                        sx={{ 
+                            mt: 1, 
+                            color: '#000', 
+                            fontSize: { xs: '0.7rem', sm: '0.75rem' },
+                            '&:hover': { bgcolor: 'rgba(0,0,0,0.05)' }
+                        }}
+                    >
+                        Retour
+                    </Button>
                 </Box>
             )}
         </Box>
