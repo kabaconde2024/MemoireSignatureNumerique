@@ -42,7 +42,7 @@ const ArchivesView = ({ setSnackbar, isMobile = false, isTablet = false }) => {
             calculerStats(response.data);
         } catch (error) {
             console.error("Erreur chargement archives:", error);
-            setSnackbar({ open: true, message: "Erreur lors du chargement des archives", severity: 'error' });
+            if (setSnackbar) setSnackbar({ open: true, message: "Erreur lors du chargement des archives", severity: 'error' });
         } finally { setLoading(false); }
     };
 
@@ -53,7 +53,7 @@ const ArchivesView = ({ setSnackbar, isMobile = false, isTablet = false }) => {
             setNonArchivedDocs(response.data);
         } catch (error) {
             console.error("Erreur chargement documents non archivés:", error);
-            setSnackbar({ open: true, message: "Erreur lors du chargement des documents non archivés", severity: 'error' });
+            if (setSnackbar) setSnackbar({ open: true, message: "Erreur lors du chargement des documents non archivés", severity: 'error' });
         } finally { setLoadingNonArchived(false); }
     };
 
@@ -69,23 +69,23 @@ const ArchivesView = ({ setSnackbar, isMobile = false, isTablet = false }) => {
         setLoading(true);
         try {
             await axios.post(`https://memoiresignaturenumerique.onrender.com/api/archivage/archiver/${selectedDocToArchive.id}?niveau=${archiveLevel}`, {}, { withCredentials: true });
-            setSnackbar({ open: true, message: `Document "${selectedDocToArchive.nom}" archivé avec succès`, severity: 'success' });
+            if (setSnackbar) setSnackbar({ open: true, message: `Document "${selectedDocToArchive.nom}" archivé avec succès`, severity: 'success' });
             setOpenArchiveDialog(false);
             setSelectedDocToArchive(null);
             fetchArchives();
             fetchNonArchivedDocuments();
         } catch (error) {
             const errorMsg = error.response?.data?.error || "Erreur lors de l'archivage";
-            setSnackbar({ open: true, message: errorMsg, severity: 'error' });
+            if (setSnackbar) setSnackbar({ open: true, message: errorMsg, severity: 'error' });
         } finally { setLoading(false); }
     };
 
     const verifierIntegrite = async (documentId) => {
         try {
             const response = await axios.get(`https://memoiresignaturenumerique.onrender.com/api/archivage/verifier/${documentId}`, { withCredentials: true });
-            setSnackbar({ open: true, message: response.data.integre ? "Archive intègre ✅" : "Archive corrompue ❌", severity: response.data.integre ? 'success' : 'error' });
+            if (setSnackbar) setSnackbar({ open: true, message: response.data.integre ? "Archive intègre ✅" : "Archive corrompue ❌", severity: response.data.integre ? 'success' : 'error' });
         } catch (error) {
-            setSnackbar({ open: true, message: "Erreur lors de la vérification", severity: 'error' });
+            if (setSnackbar) setSnackbar({ open: true, message: "Erreur lors de la vérification", severity: 'error' });
         }
     };
 
@@ -100,9 +100,9 @@ const ArchivesView = ({ setSnackbar, isMobile = false, isTablet = false }) => {
             link.click();
             link.remove();
             window.URL.revokeObjectURL(url);
-            setSnackbar({ open: true, message: "Archive exportée avec succès", severity: 'success' });
+            if (setSnackbar) setSnackbar({ open: true, message: "Archive exportée avec succès", severity: 'success' });
         } catch (error) {
-            setSnackbar({ open: true, message: "Erreur lors de l'export", severity: 'error' });
+            if (setSnackbar) setSnackbar({ open: true, message: "Erreur lors de l'export", severity: 'error' });
         }
     };
 
@@ -110,10 +110,10 @@ const ArchivesView = ({ setSnackbar, isMobile = false, isTablet = false }) => {
         if (!window.confirm("Confirmer la suppression de cette archive ?")) return;
         try {
             await axios.delete(`https://memoiresignaturenumerique.onrender.com/api/archivage/${archiveId}`, { withCredentials: true });
-            setSnackbar({ open: true, message: "Archive supprimée avec succès", severity: 'success' });
+            if (setSnackbar) setSnackbar({ open: true, message: "Archive supprimée avec succès", severity: 'success' });
             fetchArchives();
         } catch (error) {
-            setSnackbar({ open: true, message: "Erreur lors de la suppression", severity: 'error' });
+            if (setSnackbar) setSnackbar({ open: true, message: "Erreur lors de la suppression", severity: 'error' });
         }
     };
 
@@ -121,10 +121,10 @@ const ArchivesView = ({ setSnackbar, isMobile = false, isTablet = false }) => {
         if (!window.confirm("⚠️ Cette action supprimera définitivement toutes les archives expirées. Continuer ?")) return;
         try {
             const response = await axios.delete('https://memoiresignaturenumerique.onrender.com/api/archivage/purger', { withCredentials: true });
-            setSnackbar({ open: true, message: `${response.data.archivesPurgees} archive(s) purgée(s) avec succès`, severity: 'success' });
+            if (setSnackbar) setSnackbar({ open: true, message: `${response.data.archivesPurgees} archive(s) purgée(s) avec succès`, severity: 'success' });
             fetchArchives();
         } catch (error) {
-            setSnackbar({ open: true, message: "Erreur lors de la purge", severity: 'error' });
+            if (setSnackbar) setSnackbar({ open: true, message: "Erreur lors de la purge", severity: 'error' });
         }
     };
 
@@ -133,9 +133,14 @@ const ArchivesView = ({ setSnackbar, isMobile = false, isTablet = false }) => {
         fetchNonArchivedDocuments();
     }, []);
 
+    // ✅ CORRECTION : Définir filteredArchives et filteredNonArchived
     const filteredArchives = archives.filter(archive => 
         archive.reference?.toLowerCase().includes(searchTerm.toLowerCase()) ||
         archive.documentNom?.toLowerCase().includes(searchTerm.toLowerCase())
+    );
+
+    const filteredNonArchived = nonArchivedDocs.filter(doc =>
+        doc.nom?.toLowerCase().includes(searchTerm.toLowerCase())
     );
 
     return (
@@ -191,8 +196,39 @@ const ArchivesView = ({ setSnackbar, isMobile = false, isTablet = false }) => {
                         </Stack>
                     ) : (
                         <TableContainer component={Paper}>
-                            <Table><TableHead><TableRow sx={{ bgcolor: '#f5f5f5' }}><TableCell>Référence</TableCell><TableCell>Document</TableCell><TableCell>Date archivage</TableCell><TableCell>Expiration</TableCell><TableCell>Niveau</TableCell><TableCell>Statut</TableCell><TableCell align="center">Actions</TableCell></TableRow></TableHead>
-                            <TableBody>{loading ? <TableRow><TableCell colSpan={7} align="center"><CircularProgress /></TableCell></TableRow> : filteredArchives.length === 0 ? <TableRow><TableCell colSpan={7} align="center">Aucune archive trouvée</TableCell></TableRow> : filteredArchives.map((archive) => (<TableRow key={archive.id}><TableCell>{archive.reference}</TableCell><TableCell>{archive.documentNom || '-'}</TableCell><TableCell>{new Date(archive.dateArchivage).toLocaleDateString()}</TableCell><TableCell>{new Date(archive.dateExpiration).toLocaleDateString()}</TableCell><TableCell><Chip label={archive.niveau} size="small" color={archive.niveau === 'LEGAL' ? 'primary' : 'default'} /></TableCell><TableCell><Chip label={archive.statut} size="small" color={archive.statut === 'ACTIF' ? 'success' : 'error'} /></TableCell><TableCell align="center"><Stack direction="row" spacing={1} justifyContent="center"><IconButton size="small" onClick={() => verifierIntegrite(archive.documentId)}><VerifiedIcon /></IconButton><IconButton size="small" onClick={() => exporterArchive(archive.documentId, archive.reference)}><DownloadIcon /></IconButton></Stack></TableCell></TableRow>))}</TableBody></Table>
+                            <Table>
+                                <TableHead>
+                                    <TableRow sx={{ bgcolor: '#f5f5f5' }}>
+                                        <TableCell>Référence</TableCell>
+                                        <TableCell>Document</TableCell>
+                                        <TableCell>Date archivage</TableCell>
+                                        <TableCell>Expiration</TableCell>
+                                        <TableCell>Niveau</TableCell>
+                                        <TableCell>Statut</TableCell>
+                                        <TableCell align="center">Actions</TableCell>
+                                    </TableRow>
+                                </TableHead>
+                                <TableBody>
+                                    {loading ? <TableRow><TableCell colSpan={7} align="center"><CircularProgress /></TableCell></TableRow> : 
+                                     filteredArchives.length === 0 ? <TableRow><TableCell colSpan={7} align="center">Aucune archive trouvée</TableCell></TableRow> : 
+                                     filteredArchives.map((archive) => (
+                                        <TableRow key={archive.id}>
+                                            <TableCell>{archive.reference}</TableCell>
+                                            <TableCell>{archive.documentNom || '-'}</TableCell>
+                                            <TableCell>{new Date(archive.dateArchivage).toLocaleDateString()}</TableCell>
+                                            <TableCell>{new Date(archive.dateExpiration).toLocaleDateString()}</TableCell>
+                                            <TableCell><Chip label={archive.niveau} size="small" color={archive.niveau === 'LEGAL' ? 'primary' : 'default'} /></TableCell>
+                                            <TableCell><Chip label={archive.statut} size="small" color={archive.statut === 'ACTIF' ? 'success' : 'error'} /></TableCell>
+                                            <TableCell align="center">
+                                                <Stack direction="row" spacing={1} justifyContent="center">
+                                                    <IconButton size="small" onClick={() => verifierIntegrite(archive.documentId)}><VerifiedIcon /></IconButton>
+                                                    <IconButton size="small" onClick={() => exporterArchive(archive.documentId, archive.reference)}><DownloadIcon /></IconButton>
+                                                </Stack>
+                                            </TableCell>
+                                        </TableRow>
+                                    ))}
+                                </TableBody>
+                            </Table>
                         </TableContainer>
                     )}
                 </Box>
@@ -207,7 +243,9 @@ const ArchivesView = ({ setSnackbar, isMobile = false, isTablet = false }) => {
 
                     {mobile ? (
                         <Stack spacing={2}>
-                            {loadingNonArchived ? <CircularProgress /> : filteredNonArchived.length === 0 ? <Typography textAlign="center">Aucun document à archiver</Typography> : filteredNonArchived.map((doc) => (
+                            {loadingNonArchived ? <CircularProgress /> : 
+                             filteredNonArchived.length === 0 ? <Typography textAlign="center">Aucun document à archiver</Typography> : 
+                             filteredNonArchived.map((doc) => (
                                 <Paper key={doc.id} sx={{ p: 2 }}>
                                     <Stack spacing={1}>
                                         <Typography variant="body2" fontWeight="bold">{doc.nom}</Typography>
@@ -220,17 +258,75 @@ const ArchivesView = ({ setSnackbar, isMobile = false, isTablet = false }) => {
                         </Stack>
                     ) : (
                         <TableContainer component={Paper}>
-                            <Table><TableHead><TableRow sx={{ bgcolor: '#f5f5f5' }}><TableCell>ID</TableCell><TableCell>Nom du document</TableCell><TableCell>Date création</TableCell><TableCell>Statut</TableCell><TableCell align="center">Actions</TableCell></TableRow></TableHead>
-                            <TableBody>{loadingNonArchived ? <TableRow><TableCell colSpan={5} align="center"><CircularProgress /></TableCell></TableRow> : filteredNonArchived.length === 0 ? <TableRow><TableCell colSpan={5} align="center">Aucun document à archiver</TableCell></TableRow> : filteredNonArchived.map((doc) => (<TableRow key={doc.id}><TableCell>{doc.id}</TableCell><TableCell>{doc.nom}</TableCell><TableCell>{new Date(doc.dateCreation).toLocaleDateString()}</TableCell><TableCell><Chip label={doc.estSigne ? "Signé" : "Non signé"} size="small" color={doc.estSigne ? "success" : "warning"} /></TableCell><TableCell align="center"><Button variant="contained" size="small" startIcon={<ArchiveIcon />} onClick={() => { setSelectedDocToArchive(doc); setOpenArchiveDialog(true); }}>Archiver</Button></TableCell></TableRow>))}</TableBody></Table>
+                            <Table>
+                                <TableHead>
+                                    <TableRow sx={{ bgcolor: '#f5f5f5' }}>
+                                        <TableCell>ID</TableCell>
+                                        <TableCell>Nom du document</TableCell>
+                                        <TableCell>Date création</TableCell>
+                                        <TableCell>Statut</TableCell>
+                                        <TableCell align="center">Actions</TableCell>
+                                    </TableRow>
+                                </TableHead>
+                                <TableBody>
+                                    {loadingNonArchived ? <TableRow><TableCell colSpan={5} align="center"><CircularProgress /></TableCell></TableRow> : 
+                                     filteredNonArchived.length === 0 ? <TableRow><TableCell colSpan={5} align="center">Aucun document à archiver</TableCell></TableRow> : 
+                                     filteredNonArchived.map((doc) => (
+                                        <TableRow key={doc.id}>
+                                            <TableCell>{doc.id}</TableCell>
+                                            <TableCell>{doc.nom}</TableCell>
+                                            <TableCell>{new Date(doc.dateCreation).toLocaleDateString()}</TableCell>
+                                            <TableCell><Chip label={doc.estSigne ? "Signé" : "Non signé"} size="small" color={doc.estSigne ? "success" : "warning"} /></TableCell>
+                                            <TableCell align="center">
+                                                <Button variant="contained" size="small" startIcon={<ArchiveIcon />} onClick={() => { setSelectedDocToArchive(doc); setOpenArchiveDialog(true); }}>
+                                                    Archiver
+                                                </Button>
+                                            </TableCell>
+                                        </TableRow>
+                                    ))}
+                                </TableBody>
+                            </Table>
                         </TableContainer>
                     )}
                 </Box>
             )}
 
+            {/* Dialog d'archivage manuel */}
             <Dialog open={openArchiveDialog} onClose={() => setOpenArchiveDialog(false)} maxWidth="sm" fullWidth>
-                <DialogTitle sx={{ bgcolor: '#1a237e', color: 'white' }}><Stack direction="row" alignItems="center" spacing={1}><ArchiveIcon /><Typography variant="h6">Archiver un document</Typography></Stack></DialogTitle>
-                <DialogContent sx={{ mt: 2 }}>{selectedDocToArchive && (<Stack spacing={3}><Alert severity="info">Document : <strong>{selectedDocToArchive.nom}</strong></Alert><Box><Typography variant="subtitle2" gutterBottom>Niveau d'archivage :</Typography><Stack direction={mobile ? "column" : "row"} spacing={2}><Button variant={archiveLevel === 'STANDARD' ? 'contained' : 'outlined'} onClick={() => setArchiveLevel('STANDARD')} fullWidth>Standard</Button><Button variant={archiveLevel === 'LEGAL' ? 'contained' : 'outlined'} onClick={() => setArchiveLevel('LEGAL')} fullWidth sx={{ bgcolor: archiveLevel === 'LEGAL' ? '#1a237e' : undefined }}>Légal</Button><Button variant={archiveLevel === 'CERTIFIE' ? 'contained' : 'outlined'} onClick={() => setArchiveLevel('CERTIFIE')} fullWidth>Certifié</Button></Stack></Box></Stack>)}</DialogContent>
-                <DialogActions><Button onClick={() => setOpenArchiveDialog(false)}>Annuler</Button><Button onClick={archiverDocumentManuel} variant="contained" disabled={loading} sx={{ bgcolor: '#1a237e' }}>{loading ? <CircularProgress size={24} /> : "Archiver"}</Button></DialogActions>
+                <DialogTitle sx={{ bgcolor: '#1a237e', color: 'white' }}>
+                    <Stack direction="row" alignItems="center" spacing={1}>
+                        <ArchiveIcon />
+                        <Typography variant="h6">Archiver un document</Typography>
+                    </Stack>
+                </DialogTitle>
+                <DialogContent sx={{ mt: 2 }}>
+                    {selectedDocToArchive && (
+                        <Stack spacing={3}>
+                            <Alert severity="info">Document : <strong>{selectedDocToArchive.nom}</strong></Alert>
+                            <Box>
+                                <Typography variant="subtitle2" gutterBottom>Niveau d'archivage :</Typography>
+                                <Stack direction={mobile ? "column" : "row"} spacing={2}>
+                                    <Button variant={archiveLevel === 'STANDARD' ? 'contained' : 'outlined'} onClick={() => setArchiveLevel('STANDARD')} fullWidth>Standard</Button>
+                                    <Button variant={archiveLevel === 'LEGAL' ? 'contained' : 'outlined'} onClick={() => setArchiveLevel('LEGAL')} fullWidth sx={{ bgcolor: archiveLevel === 'LEGAL' ? '#1a237e' : undefined }}>Légal</Button>
+                                    <Button variant={archiveLevel === 'CERTIFIE' ? 'contained' : 'outlined'} onClick={() => setArchiveLevel('CERTIFIE')} fullWidth>Certifié</Button>
+                                </Stack>
+                            </Box>
+                            <Paper variant="outlined" sx={{ p: 2, bgcolor: '#f9f9f9' }}>
+                                <Typography variant="caption" color="textSecondary">
+                                    {archiveLevel === 'STANDARD' && "Archivage simple sans preuve légale supplémentaire."}
+                                    {archiveLevel === 'LEGAL' && "Archivage avec preuve de conservation et certificat d'archivage (Recommandé)."}
+                                    {archiveLevel === 'CERTIFIE' && "Archivage certifié par un tiers de confiance."}
+                                </Typography>
+                            </Paper>
+                        </Stack>
+                    )}
+                </DialogContent>
+                <DialogActions>
+                    <Button onClick={() => setOpenArchiveDialog(false)}>Annuler</Button>
+                    <Button onClick={archiverDocumentManuel} variant="contained" disabled={loading} sx={{ bgcolor: '#1a237e' }}>
+                        {loading ? <CircularProgress size={24} /> : "Archiver"}
+                    </Button>
+                </DialogActions>
             </Dialog>
         </Box>
     );
