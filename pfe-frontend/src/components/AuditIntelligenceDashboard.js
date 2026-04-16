@@ -1,4 +1,5 @@
-// components/AuditIntelligenceDashboard.js - Version avec graphiques améliorés
+// components/AuditIntelligenceDashboard.js - VERSION CORRIGÉE
+
 import React, { useState, useEffect } from 'react';
 import {
     Box, Grid, Card, CardContent, Typography, Paper,
@@ -6,7 +7,7 @@ import {
     Divider, Tabs, Tab, Table, TableBody, TableCell,
     TableContainer, TableHead, TableRow, useMediaQuery,
     TextField, Dialog, DialogTitle, DialogContent,
-    DialogActions, IconButton, Tooltip, ToggleButton, ToggleButtonGroup,Button
+    DialogActions, IconButton, Tooltip, ToggleButton, ToggleButtonGroup, Button
 } from '@mui/material';
 import {
     TrendingUp, TrendingDown, Warning, Security,
@@ -22,8 +23,25 @@ import {
 } from 'recharts';
 import axios from 'axios';
 
-// Configuration de l'API
-const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:8000';
+// ============================================
+// CONFIGURATION DES API
+// ============================================
+// Service IA (FastAPI) pour l'audit intelligent
+const IA_API_URL = process.env.REACT_APP_IA_API_URL || 'http://localhost:8000';
+// Backend Spring Boot pour les données
+const SPRING_API_URL = process.env.REACT_APP_SPRING_API_URL || 'https://memoiresignaturenumerique.onrender.com';
+
+// Configuration axios avec le token
+const getAuthConfig = () => {
+    const token = localStorage.getItem('token');
+    return {
+        headers: {
+            'Authorization': token ? `Bearer ${token}` : '',
+            'Content-Type': 'application/json'
+        },
+        withCredentials: true
+    };
+};
 
 // Palettes de couleurs
 const CHART_COLORS = ['#1a237e', '#0d47a1', '#1565c0', '#1976d2', '#1e88e5', '#42a5f5', '#90caf5', '#64b5f6'];
@@ -163,17 +181,20 @@ const AuditIntelligenceDashboard = ({ setSnackbar }) => {
     const fetchDashboardData = async () => {
         setLoading(true);
         try {
-            const statsResponse = await axios.get(`${API_BASE_URL}/api/audit/statistiques`, {
+            // 1. Récupérer les statistiques depuis le service IA (FastAPI)
+            const statsResponse = await axios.get(`${IA_API_URL}/api/audit/statistiques`, {
                 params: { periode: 'semaine' }
             });
             console.log('📊 Stats reçues:', statsResponse.data);
             setStats(statsResponse.data);
 
-            const anomaliesResponse = await axios.get(`${API_BASE_URL}/api/audit/anomalies`, {
+            // 2. Récupérer les anomalies depuis le service IA
+            const anomaliesResponse = await axios.get(`${IA_API_URL}/api/audit/anomalies`, {
                 params: { jours: 7 }
             });
             setAnomalies(anomaliesResponse.data.anomalies || []);
 
+            // 3. Récupérer les utilisateurs à risque
             await fetchTopRiskUsers();
 
         } catch (error) {
@@ -203,7 +224,7 @@ const AuditIntelligenceDashboard = ({ setSnackbar }) => {
 
     const fetchTopRiskUsers = async () => {
         try {
-            const response = await axios.get(`${API_BASE_URL}/api/ia/audit/journaux`, {
+            const response = await axios.get(`${IA_API_URL}/api/ia/audit/journaux`, {
                 params: {
                     date_debut: dateRange.start,
                     date_fin: dateRange.end,
@@ -252,7 +273,7 @@ const AuditIntelligenceDashboard = ({ setSnackbar }) => {
     const generateReport = async () => {
         setGeneratingReport(true);
         try {
-            const response = await axios.get(`${API_BASE_URL}/api/ia/audit/rapport`, {
+            const response = await axios.get(`${IA_API_URL}/api/ia/audit/rapport`, {
                 params: {
                     date_debut: dateRange.start,
                     date_fin: dateRange.end
@@ -317,13 +338,13 @@ const AuditIntelligenceDashboard = ({ setSnackbar }) => {
         const data = Object.entries(stats.par_type).map(([name, value]) => ({
             name: name,
             value: value,
-            label: name === 'SIGNATURE_DOCUMENT' ? '📝 Signatures' :
-                   name === 'CONNEXION' ? '🔐 Connexions' :
-                   name === 'ENVOI_INVITATION' ? '📧 Invitations' :
-                   name === 'GENERATION_CERTIFICAT' ? '📜 Certificats' :
-                   name === 'AUTO_SIGNATURE' ? '⚡ Auto-signatures' :
-                   name === 'VALIDATION_OTP' ? '🔢 Validation OTP' :
-                   name === 'INSCRIPTION' ? '👤 Inscriptions' :
+            label: name === 'SIGNATURE_DOCUMENT' ? 'Signatures' :
+                   name === 'CONNEXION' ? 'Connexions' :
+                   name === 'ENVOI_INVITATION' ? 'Invitations' :
+                   name === 'GENERATION_CERTIFICAT' ? 'Certificats' :
+                   name === 'AUTO_SIGNATURE' ? 'Auto-signatures' :
+                   name === 'VALIDATION_OTP' ? 'Validation OTP' :
+                   name === 'INSCRIPTION' ? 'Inscriptions' :
                    name.replace(/_/g, ' ')
         }));
         
@@ -479,13 +500,13 @@ const AuditIntelligenceDashboard = ({ setSnackbar }) => {
                             sx={{ bgcolor: '#f5f5f5', borderRadius: 2 }}
                         >
                             <ToggleButton value="donut" aria-label="donut">
-                                <DonutIcon fontSize="small" /> &nbsp;Anneau
+                                <DonutIcon fontSize="small" /> Anneau
                             </ToggleButton>
                             <ToggleButton value="pie" aria-label="pie">
-                                <PieChartIcon fontSize="small" /> &nbsp;Camembert
+                                <PieChartIcon fontSize="small" /> Camembert
                             </ToggleButton>
                             <ToggleButton value="bar" aria-label="bar">
-                                <BarChartIcon fontSize="small" /> &nbsp;Barres
+                                <BarChartIcon fontSize="small" /> Barres
                             </ToggleButton>
                         </ToggleButtonGroup>
                     </Stack>
