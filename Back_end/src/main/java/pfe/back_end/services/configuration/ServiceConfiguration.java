@@ -74,4 +74,11 @@ public class ServiceConfiguration {
         });
         return configs;
     }
+
+    // pfe/back_end/services/configuration/ServiceConfiguration.java
+
+// ✅ Ajoutez cette méthode
+public int getMfaCodeExpirationMinutes() {
+    return getIntValeur("mfa.code.expiration.minutes", 1);
+}
 }
