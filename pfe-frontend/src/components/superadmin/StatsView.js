@@ -1,3 +1,4 @@
+// components/superadmin/StatsView.js - VERSION CORRIGÉE
 import React, { useState, useEffect } from 'react';
 import { 
     Box, Grid, Card, CardContent, Typography, Stack, 
@@ -11,6 +12,22 @@ import {
     Draw, AutoFixHigh, Fingerprint
 } from '@mui/icons-material';
 import axios from 'axios';
+
+// Configuration des API
+const IA_API_URL = process.env.REACT_APP_IA_API_URL || 'http://localhost:8000';
+const SPRING_API_URL = process.env.REACT_APP_SPRING_API_URL || 'https://memoiresignaturenumerique.onrender.com';
+
+// Configuration axios avec token
+const getAuthConfig = () => {
+    const token = localStorage.getItem('token');
+    return {
+        headers: {
+            'Authorization': token ? `Bearer ${token}` : '',
+            'Content-Type': 'application/json'
+        },
+        withCredentials: true
+    };
+};
 
 const StatsView = ({ setSnackbar, isMobile = false, isTablet = false }) => {
     const [stats, setStats] = useState({
@@ -37,13 +54,15 @@ const StatsView = ({ setSnackbar, isMobile = false, isTablet = false }) => {
 
     useEffect(() => {
         const fetchStats = async () => {
+            setLoading(true);
             try {
+                // Appel via Spring Boot avec token
                 const [usersRes, certRes, docsRes, activitiesRes, signaturesRes] = await Promise.all([
-                    axios.get('https://memoiresignaturenumerique.onrender.com/api/admin/stats/utilisateurs', { withCredentials: true }),
-                    axios.get('https://memoiresignaturenumerique.onrender.com/api/admin/pki/stats', { withCredentials: true }),
-                    axios.get('https://memoiresignaturenumerique.onrender.com/api/admin/stats/documents', { withCredentials: true }),
-                    axios.get('https://memoiresignaturenumerique.onrender.com/api/admin/stats/activites', { withCredentials: true }),
-                    axios.get('https://memoiresignaturenumerique.onrender.com/api/admin/stats/signatures', { withCredentials: true })
+                    axios.get(`${SPRING_API_URL}/api/admin/stats/utilisateurs`, getAuthConfig()),
+                    axios.get(`${SPRING_API_URL}/api/admin/pki/stats`, getAuthConfig()),
+                    axios.get(`${SPRING_API_URL}/api/admin/stats/documents`, getAuthConfig()),
+                    axios.get(`${SPRING_API_URL}/api/admin/stats/activites`, getAuthConfig()),
+                    axios.get(`${SPRING_API_URL}/api/admin/stats/signatures`, getAuthConfig())
                 ]);
                 
                 setStats({
@@ -160,7 +179,6 @@ const StatsView = ({ setSnackbar, isMobile = false, isTablet = false }) => {
             </Typography>
             
             {mobile ? (
-                // Version mobile - cartes
                 <Stack spacing={2}>
                     {recentActivities.length === 0 ? (
                         <Paper sx={{ p: 3, textAlign: 'center' }}>
@@ -186,7 +204,6 @@ const StatsView = ({ setSnackbar, isMobile = false, isTablet = false }) => {
                     )}
                 </Stack>
             ) : (
-                // Version desktop - tableau
                 <TableContainer component={Paper} sx={{ borderRadius: '12px', overflowX: 'auto' }}>
                     <Table sx={{ minWidth: 650 }}>
                         <TableHead sx={{ bgcolor: '#f5f5f5' }}>

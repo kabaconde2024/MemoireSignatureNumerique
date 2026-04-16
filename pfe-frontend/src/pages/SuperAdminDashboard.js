@@ -16,8 +16,7 @@ import {
     History as HistoryIcon,
     Menu as MenuIcon,
     Notifications as NotificationsIcon,
-        Analytics as AnalyticsIcon
-
+    Analytics as AnalyticsIcon
 } from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
 import AdminCertificats from '../components/pki/AdminCertificats';
@@ -40,15 +39,13 @@ const SuperAdminDashboard = () => {
     // Responsive breakpoints
     const isMobile = useMediaQuery('(max-width:600px)');
     const isTablet = useMediaQuery('(max-width:960px)');
-    const isSmallMobile = useMediaQuery('(max-width:380px)');
 
     const menuItems = [
         { id: 'stats', text: 'Tableau de Bord', icon: <DashboardIcon />, mobileText: 'Stats' },
         { id: 'pki', text: 'Gestion PKI / HSM', icon: <SecurityIcon />, mobileText: 'PKI' },
         { id: 'utilisateurs', text: 'Utilisateurs', icon: <PeopleIcon />, mobileText: 'Users' },
         { id: 'audit', text: 'Journalisation (Audit)', icon: <HistoryIcon />, mobileText: 'Audit' },
-                { id: 'audit-ia', text: '🤖 Audit Intelligence', icon: <AnalyticsIcon /> },
-
+        { id: 'audit-ia', text: '🤖 Audit Intelligence', icon: <AnalyticsIcon />, mobileText: 'IA Audit' },
         { id: 'archives', text: 'Archivage', icon: <ArchiveIcon />, mobileText: 'Archives' },
         { id: 'horodatage', text: 'Horodatage', icon: <AccessTimeIcon />, mobileText: 'Time' },
         { id: 'reglages', text: 'Configuration Système', icon: <SettingsIcon />, mobileText: 'Config' },
@@ -56,6 +53,7 @@ const SuperAdminDashboard = () => {
 
     const handleLogout = () => {
         localStorage.removeItem('token');
+        localStorage.removeItem('user');
         navigate('/connexion');
     };
 
@@ -78,9 +76,9 @@ const SuperAdminDashboard = () => {
             case 'utilisateurs':
                 return <UtilisateursView {...commonProps} />;
             case 'audit':
-                case 'audit-ia':  // ✅ Correction: audit-ia au lieu de audit-ia
-                return <AuditIntelligenceDashboard {...commonProps} />;
                 return <AuditLogsView {...commonProps} />;
+            case 'audit-ia':
+                return <AuditIntelligenceDashboard {...commonProps} />;
             case 'archives':
                 return <ArchivesView {...commonProps} />;
             case 'horodatage':
