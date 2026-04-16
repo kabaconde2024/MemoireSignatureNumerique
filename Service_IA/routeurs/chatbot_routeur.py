@@ -1,4 +1,4 @@
-# service_ia/routeurs/chatbot_routeur.py - Version sans émojis
+# service_ia/routeurs/chatbot_routeur.py
 from fastapi import APIRouter
 from pydantic import BaseModel
 from typing import Optional, List, Dict
@@ -12,15 +12,13 @@ logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/chatbot", tags=["Chatbot"])
 
 # ============================================
-# CONFIGURATION MISTRAL (API REST)
+# CONFIGURATION MISTRAL (API REST directe)
 # ============================================
 MISTRAL_API_KEY = os.getenv("MISTRAL_API_KEY", "ZQfdOI3Q3Gwg2d7odgcg0Madaexee3qY")
 MISTRAL_AVAILABLE = bool(MISTRAL_API_KEY)
 
 if MISTRAL_AVAILABLE:
-    logger.info("✅ Mistral API configurée")
-else:
-    logger.warning("⚠️ MISTRAL_API_KEY non trouvée")
+    logger.info("Mistral API configurée")
 
 # ============================================
 # MODÈLES DE DONNÉES
@@ -49,16 +47,16 @@ KNOWLEDGE_BASE = {
         "response": """
 [SIGNATURE SIMPLE - CODE OTP]
 
-Procédure :
+Procedure :
 1. Recevez l'invitation par email
-2. Cliquez sur le lien sécurisé
-3. Saisissez le code OTP reçu par SMS
+2. Cliquez sur le lien securise
+3. Saisissez le code OTP recu par SMS
 4. Confirmez la signature
 
 Informations :
 - Code valable : 5 minutes
 - Lien valable : 7 jours
-- Valeur légale : Preuve électronique admissible en justice
+- Valeur legale : Preuve electronique admissible en justice
 """
     },
     "signature_avancee": {
@@ -66,16 +64,16 @@ Informations :
         "response": """
 [SIGNATURE AVANCEE - PKI/HSM]
 
-Procédure :
+Procedure :
 1. Recevez l'invitation par email
 2. Cliquez sur "Signer avec certificat"
-3. Sélectionnez votre certificat
+3. Selectionnez votre certificat
 4. Validez la signature
 
 Avantages :
 - Valeur juridique maximale
-- Non-répudiable
-- Conforme au règlement eIDAS
+- Non-repudiable
+- Conforme au reglement eIDAS
 """
     },
     "accueil": {
@@ -83,15 +81,15 @@ Avantages :
         "response": """
 [ASSISTANT TRUSTSIGN]
 
-Je suis l'assistant de la plateforme de signature électronique TrustSign.
+Je suis l'assistant de la plateforme de signature electronique TrustSign.
 
 Je peux vous aider sur les sujets suivants :
 - Signature simple (code OTP)
-- Signature avancée (certificat PKI)
-- Invitations à signer
+- Signature avancee (certificat PKI)
+- Invitations a signer
 - Double authentification (MFA)
-- Certificats numériques
-- Problèmes techniques
+- Certificats numeriques
+- Problemes techniques
 
 Posez votre question.
 """
@@ -105,9 +103,9 @@ Je n'ai pas bien compris votre question.
 
 Exemples de questions que je peux traiter :
 - Comment signer un document ?
-- Je n'ai pas reçu mon code OTP
+- Je n'ai pas recu mon code OTP
 - Comment obtenir un certificat ?
-- Mon compte est bloqué
+- Mon compte est bloque
 
 Support : support@trustsign.com
 """
@@ -137,7 +135,7 @@ def find_fallback_response(message: str) -> tuple:
     return KNOWLEDGE_BASE["inconnu"]["response"], "inconnu", 0.3
 
 async def get_mistral_response(request: MessageRequest):
-    """Génère une réponse avec l'API Mistral (sans émojis)"""
+    """Appel direct à l'API Mistral (sans bibliothèque)"""
     if not MISTRAL_AVAILABLE:
         return None
     
@@ -147,41 +145,12 @@ async def get_mistral_response(request: MessageRequest):
             "Authorization": f"Bearer {MISTRAL_API_KEY}",
             "Content-Type": "application/json"
         }
-        
         data = {
             "model": "mistral-small-latest",
             "messages": [
                 {
                     "role": "system",
-                    "content": """
-Tu es l'assistant officiel de TrustSign, une plateforme de signature électronique.
-
-FORMATAGE OBLIGATOIRE DES REPONSES (SANS EMOJIS) :
-
-1. Commence par un titre entre crochets
-   Exemple: [SIGNATURE SIMPLE]
-
-2. Structure avec des numéros pour les étapes :
-   1. Première étape
-   2. Deuxième étape
-   3. Troisième étape
-
-3. Utilise des tirets pour les listes :
-   - Information 1
-   - Information 2
-   - Information 3
-
-4. Termine par une ligne de séparation et une question ouverte :
-   ---
-   Besoin d'aide ? Je suis là pour répondre à vos questions.
-
-REGLES :
-- Réponds UNIQUEMENT en français
-- Sois professionnel, précis et clair
-- Structure tes réponses avec des sauts de ligne
-- N'utilise AUCUN émoji
-- Propose une action concrète à la fin
-"""
+                    "content": "Tu es l'assistant TrustSign. Reponds en francais, de maniere professionnelle et claire. N'utilise pas d'emojis."
                 },
                 {
                     "role": "user",
@@ -189,7 +158,7 @@ REGLES :
                 }
             ],
             "temperature": 0.7,
-            "max_tokens": 600
+            "max_tokens": 500
         }
         
         response = requests.post(url, headers=headers, json=data, timeout=30)
@@ -205,23 +174,19 @@ REGLES :
                 suggestions=[
                     "Comment signer un document ?",
                     "Comment obtenir un certificat ?",
-                    "Comment inviter à signer ?",
-                    "Activer la double authentification"
+                    "Comment inviter à signer ?"
                 ],
                 model_used="mistral_ai",
                 timestamp=datetime.now().isoformat()
             )
         else:
-            logger.error(f"Erreur Mistral: {response.status_code} - {response.text}")
+            logger.error(f"Erreur Mistral: {response.status_code}")
             return None
         
     except Exception as e:
         logger.error(f"Erreur Mistral: {e}")
         return None
 
-# ============================================
-# ENDPOINTS
-# ============================================
 @router.post("/message", response_model=MessageResponse)
 async def send_message(request: MessageRequest):
     logger.info(f"Message: {request.message[:100]}...")
@@ -232,7 +197,7 @@ async def send_message(request: MessageRequest):
             logger.info("Reponse Mistral AI")
             return mistral_response
     
-    logger.info("Utilisation du fallback")
+    logger.info("Fallback")
     response_text, intent, confidence = find_fallback_response(request.message)
     
     return MessageResponse(
@@ -254,9 +219,7 @@ async def get_suggestions():
         "Comment signer un document ?",
         "Comment obtenir un certificat ?",
         "Comment inviter à signer ?",
-        "Activer la double authentification",
-        "Valeur legale signature electronique",
-        "Je n'ai pas reçu le code OTP"
+        "Activer la double authentification"
     ]}
 
 @router.get("/health")
