@@ -5,7 +5,7 @@ import {
     Chip, Tooltip, useMediaQuery
 } from '@mui/material';
 import { Save, Security, Email, Storage, Refresh, CheckCircle, Cancel, Info } from '@mui/icons-material';
-import API from '../../api/axiosConfig'; // ✅ Utilisation de l'instance API configurée
+import API from '../../services/api';
 
 const ConfigurationView = ({ setSnackbar, isMobile = false, isTablet = false }) => {
     const [config, setConfig] = useState({
