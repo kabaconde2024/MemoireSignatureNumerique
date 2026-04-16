@@ -16,6 +16,7 @@ import UserDashboard from './pages/UserDashboard';
 import SuperAdminDashboard from './pages/SuperAdminDashboard';
 import SignatureSimplePage from './pages/Simple/SignatureSimplePage';
 import SignaturePkiPage from './pages/Pki/SignaturePkiPage';
+import Chatbot from './components/Chatbot';
 
 // Thème Material-UI
 const theme = createTheme({
@@ -79,7 +80,11 @@ function App() {
           
           {/* Redirection 404 */}
           <Route path="*" element={<Navigate to="/" replace />} />
+
+
         </Routes>
+          <Chatbot />
+
       </Router>
     </ThemeProvider>
   );
