@@ -15,7 +15,9 @@ import {
     AccessTime as AccessTimeIcon,
     History as HistoryIcon,
     Menu as MenuIcon,
-    Notifications as NotificationsIcon
+    Notifications as NotificationsIcon,
+        Analytics as AnalyticsIcon
+
 } from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
 import AdminCertificats from '../components/pki/AdminCertificats';
@@ -76,6 +78,8 @@ const SuperAdminDashboard = () => {
             case 'utilisateurs':
                 return <UtilisateursView {...commonProps} />;
             case 'audit':
+                case 'audit-ia':  // ✅ Correction: audit-ia au lieu de audit-ia
+                return <AuditIntelligenceDashboard {...commonProps} />;
                 return <AuditLogsView {...commonProps} />;
             case 'archives':
                 return <ArchivesView {...commonProps} />;
