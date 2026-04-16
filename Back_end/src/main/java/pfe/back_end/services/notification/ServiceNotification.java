@@ -62,40 +62,51 @@ public class ServiceNotification {
         }
     }
 
-    public void envoyerCodeMfa(String email, String code) {
+   public void envoyerCodeMfa(String email, String code, int dureeExpirationMinutes) {
         try {
             MimeMessage message = mailSender.createMimeMessage();
             MimeMessageHelper helper = new MimeMessageHelper(message, true, "UTF-8");
 
             helper.setTo(email);
-            helper.setSubject(" Code de sécurité - PROTECTED CONSULTING");
-            
-            // ✅ Correction : Ajout de la gestion d'encodage
-            helper.setFrom(EXPEDITEUR_EMAIL, EXPEDITEUR_NOM);
+            helper.setSubject("🔐 Code de sécurité - TrustSign");
 
-            String contenuHtml = "<div style='font-family: \"Segoe UI\", Tahoma, Geneva, Verdana, sans-serif; max-width: 500px; margin: auto; border: 1px solid #e2e8f0; border-radius: 16px; overflow: hidden;'>" +
-                    "<div style='background-color: #0b1e39; padding: 20px; text-align: center;'>" +
-                    "<h1 style='color: #ffffff; margin: 0; font-size: 16px; letter-spacing: 2px;'>PROTECTED CONSULTING</h1>" +
-                    "</div>" +
-                    "<div style='padding: 40px 20px; text-align: center; background-color: #ffffff;'>" +
-                    "<p style='color: #64748b; font-size: 15px; margin-bottom: 25px;'>Votre code de vérification est :</p>" +
-                    "<div style='background-color: #f8fafc; border: 2px dashed #cbd5e1; padding: 20px; border-radius: 12px; display: inline-block; min-width: 200px;'>" +
-                    "<span style='font-family: \"Courier New\", monospace; font-size: 36px; font-weight: bold; color: #0f172a; letter-spacing: 10px;'>" + code + "</span>" +
-                    "</div>" +
-                    "<p style='color: #94a3b8; font-size: 12px; margin-top: 25px;'>Ce code expirera dans 5 minutes. Ne le partagez avec personne.</p>" +
-                    "</div>" +
-                    "<div style='background-color: #f1f5f9; padding: 15px; text-align: center;'>" +
-                    "<p style='margin: 0; color: #94a3b8; font-size: 11px;'>&copy; 2026 Protected Consulting - Sécurité Certifiée</p>" +
-                    "</div>" +
-                    "</div>";
+            String contenuHtml = String.format("""
+            <div style='font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif; max-width: 500px; margin: auto; border: 1px solid #e2e8f0; border-radius: 16px; overflow: hidden;'>
+                <div style='background-color: #1a237e; padding: 20px; text-align: center;'>
+                    <h1 style='color: #ffffff; margin: 0; font-size: 20px;'>TRUSTSIGN</h1>
+                </div>
+                <div style='padding: 40px 20px; text-align: center; background-color: #ffffff;'>
+                    <p style='color: #64748b; font-size: 15px; margin-bottom: 25px;'>Votre code de vérification est :</p>
+                    <div style='background-color: #f8fafc; border: 2px dashed #cbd5e1; padding: 20px; border-radius: 12px; display: inline-block; min-width: 200px;'>
+                        <span style='font-family: "Courier New", monospace; font-size: 36px; font-weight: bold; color: #1a237e; letter-spacing: 10px;'>
+                            %s
+                        </span>
+                    </div>
+                    <p style='color: #ef4444; font-size: 14px; margin-top: 20px; font-weight: bold;'>
+                        ⏰ Ce code expire dans <strong>%d minute%s</strong> !
+                    </p>
+                    <p style='color: #94a3b8; font-size: 12px; margin-top: 15px;'>
+                        Pour votre sécurité, ce code est à usage unique et expire rapidement.
+                        Si vous n'êtes pas à l'origine de cette demande, ignorez cet email.
+                    </p>
+                </div>
+                <div style='background-color: #f1f5f9; padding: 15px; text-align: center;'>
+                    <p style='margin: 0; color: #94a3b8; font-size: 11px;'>&copy; 2026 TrustSign - Sécurité Certifiée</p>
+                </div>
+            </div>
+            """, code, dureeExpirationMinutes, dureeExpirationMinutes > 1 ? "s" : "");
 
             helper.setText(contenuHtml, true);
+            helper.setFrom("kabaconde5259@gmail.com", "TrustSign");
             mailSender.send(message);
-        } catch (MessagingException | UnsupportedEncodingException e) {
+
+            System.out.println("📧 Code MFA envoyé à " + email + " (expiration: " + dureeExpirationMinutes + " minute(s))");
+        } catch (Exception e) {
             e.printStackTrace();
-            throw new RuntimeException("Erreur envoi email MFA : " + e.getMessage());
+            System.err.println("❌ Erreur envoi email MFA: " + e.getMessage());
         }
     }
+
 
     public void renitialiser(String to, String code) {
         SimpleMailMessage message = new SimpleMailMessage();

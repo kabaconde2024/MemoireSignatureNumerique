@@ -66,6 +66,21 @@ public class ConfigurationSecurite {
                                 "/api/invitations/verifier/**"
                         ).permitAll()
 
+
+                          .requestMatchers(
+                                "/api/ia/logs/public",     // Endpoint public avec clé API
+                                "/api/ia/health",          // Health check
+                                "/api/ia/anomalies",       // Réception anomalies
+                                "/api/ia/rapports"         // Réception rapports
+                        ).permitAll()  // Ces endpoints sont publics mais protégés par clé API
+
+
+                        // ✅ AJOUT : Endpoint public pour le service IA (temporaire)
+                        .requestMatchers(
+                                "/api/admin/audit/ia-data",
+                                "/api/admin/audit/test"
+                        ).permitAll()
+
                         // ==================== ROUTES PRIVÉES (Rôles spécifiques) ====================
                         .requestMatchers("/api/entreprise/**").hasAuthority("ADMIN_ENTREPRISE")
                         .requestMatchers("/api/super-admin/**").hasAuthority("SUPER_ADMIN")

@@ -25,6 +25,7 @@ import ConfigurationView from '../components/superadmin/ConfigurationView';
 import ArchivesView from '../components/superadmin/ArchivesView';
 import HorodatageStatusView from '../components/superadmin/HorodatageStatusView';
 import AuditLogsView from '../components/superadmin/AuditLogsView';
+import AuditIntelligenceDashboard from '../components/AuditIntelligenceDashboard';
 
 const drawerWidth = 280;
 
@@ -44,6 +45,8 @@ const SuperAdminDashboard = () => {
         { id: 'pki', text: 'Gestion PKI / HSM', icon: <SecurityIcon />, mobileText: 'PKI' },
         { id: 'utilisateurs', text: 'Utilisateurs', icon: <PeopleIcon />, mobileText: 'Users' },
         { id: 'audit', text: 'Journalisation (Audit)', icon: <HistoryIcon />, mobileText: 'Audit' },
+                { id: 'audit-ia', text: '🤖 Audit Intelligence', icon: <AnalyticsIcon /> },
+
         { id: 'archives', text: 'Archivage', icon: <ArchiveIcon />, mobileText: 'Archives' },
         { id: 'horodatage', text: 'Horodatage', icon: <AccessTimeIcon />, mobileText: 'Time' },
         { id: 'reglages', text: 'Configuration Système', icon: <SettingsIcon />, mobileText: 'Config' },

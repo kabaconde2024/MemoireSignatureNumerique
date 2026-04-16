@@ -1,0 +1,18 @@
+# Service_IA/render.yaml
+services:
+  - type: web
+    name: trustsign-ia-service
+    runtime: python
+    repo: https://github.com/VOTRE_COMPTE/Service_IA
+    branch: main
+    buildCommand: pip install -r requirements.txt
+    startCommand: uvicorn main:app --host 0.0.0.0 --port 8000
+    envVars:
+      - key: SPRING_BOOT_URL
+        value: https://memoiresignaturenumerique.onrender.com
+      - key: SPRING_BOOT_API_KEY
+        value: trustsign-secret-key-2024
+      - key: MISTRAL_API_KEY
+        value: ZQfdOI3Q3Gwg2d7odgcg0Madaexee3qY
+      - key: SPRING_BOOT_VERIFY_SSL
+        value: "false"

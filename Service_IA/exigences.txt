@@ -1,0 +1,7 @@
+# Service_IA/requirements.txt
+fastapi==0.104.1
+uvicorn==0.24.0
+pydantic==2.5.0
+requests==2.31.0
+python-dotenv==1.0.0
+mistralai==0.4.2

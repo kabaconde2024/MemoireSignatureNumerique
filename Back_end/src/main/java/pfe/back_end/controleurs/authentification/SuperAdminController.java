@@ -203,14 +203,12 @@ public class SuperAdminController {
         }
     }
 
-    // ==================== CONFIGURATION SYSTÈME DYNAMIQUE ====================
-
+   
     @GetMapping("/config")
     @PreAuthorize("hasAuthority('SUPER_ADMIN')")
     public ResponseEntity<Map<String, Object>> getConfiguration() {
         Map<String, Object> config = new HashMap<>();
 
-        // Récupérer les valeurs dynamiques depuis la base
         config.put("pkiCertificatDureeMinutes",
                 Integer.parseInt(serviceConfiguration.getValeur("pki.certificat.duree.minutes")));
         config.put("signatureExpirationJours",
@@ -225,6 +223,11 @@ public class SuperAdminController {
                 Integer.parseInt(serviceConfiguration.getValeur("signature.otp.expiration.minutes")));
         config.put("otpLongueur",
                 Integer.parseInt(serviceConfiguration.getValeur("signature.otp.longueur")));
+
+        // ✅ NOUVEAU : Ajouter la configuration MFA
+        config.put("mfaCodeExpirationMinutes",
+                Integer.parseInt(serviceConfiguration.getValeur("mfa.code.expiration.minutes")));
+
         config.put("version", "1.0.0");
         config.put("hsmStatus", "connecté");
         config.put("dateServeur", LocalDateTime.now().toString());
@@ -236,7 +239,6 @@ public class SuperAdminController {
     @PreAuthorize("hasAuthority('SUPER_ADMIN')")
     public ResponseEntity<?> saveConfiguration(@RequestBody Map<String, Object> config) {
         try {
-            // Sauvegarder les valeurs dynamiques en base
             if (config.containsKey("pkiCertificatDureeMinutes")) {
                 serviceConfiguration.setValeur("pki.certificat.duree.minutes",
                         String.valueOf(config.get("pkiCertificatDureeMinutes")));
@@ -257,6 +259,20 @@ public class SuperAdminController {
                 serviceConfiguration.setValeur("securite.mfa.obligatoire",
                         String.valueOf(config.get("mfaObligatoire")));
             }
+            if (config.containsKey("otpExpirationMinutes")) {
+                serviceConfiguration.setValeur("signature.otp.expiration.minutes",
+                        String.valueOf(config.get("otpExpirationMinutes")));
+            }
+            if (config.containsKey("otpLongueur")) {
+                serviceConfiguration.setValeur("signature.otp.longueur",
+                        String.valueOf(config.get("otpLongueur")));
+            }
+
+            // ✅ NOUVEAU : Sauvegarder la durée MFA
+            if (config.containsKey("mfaCodeExpirationMinutes")) {
+                serviceConfiguration.setValeur("mfa.code.expiration.minutes",
+                        String.valueOf(config.get("mfaCodeExpirationMinutes")));
+            }
 
             return ResponseEntity.ok(Map.of(
                     "message", "Configuration sauvegardée avec succès",
@@ -266,6 +282,7 @@ public class SuperAdminController {
             return ResponseEntity.status(500).body(Map.of("erreur", e.getMessage()));
         }
     }
+
 
     // ==================== UTILITAIRES ====================
 
