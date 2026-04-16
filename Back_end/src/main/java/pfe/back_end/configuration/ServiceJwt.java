@@ -23,7 +23,7 @@ public class ServiceJwt {
                 .signWith(SignatureAlgorithm.HS256, SECRET.getBytes())
                 .compact();
 
-        System.out.println("🔐 Token généré: " + token.substring(0, Math.min(30, token.length())) + "...");
+        System.out.println("🔐 Token généré");
         return token;
     }
 
@@ -35,23 +35,18 @@ public class ServiceJwt {
                     .getBody()
                     .getSubject();
         } catch (Exception e) {
-            System.err.println("❌ Erreur extraction email: " + e.getMessage());
             return null;
         }
     }
 
     public String getRoleFromToken(String token) {
         try {
-            String role = (String) Jwts.parser()
+            return (String) Jwts.parser()
                     .setSigningKey(SECRET.getBytes())
                     .parseClaimsJws(token)
                     .getBody()
                     .get("role");
-
-            System.out.println("🔍 Rôle extrait: '" + role + "'");
-            return role;
         } catch (Exception e) {
-            System.err.println("❌ Erreur extraction rôle: " + e.getMessage());
             return "UTILISATEUR";
         }
     }
@@ -59,10 +54,8 @@ public class ServiceJwt {
     public boolean validateToken(String token) {
         try {
             Jwts.parser().setSigningKey(SECRET.getBytes()).parseClaimsJws(token);
-            System.out.println("✅ Token valide");
             return true;
         } catch (Exception e) {
-            System.err.println("❌ Token invalide: " + e.getMessage());
             return false;
         }
     }
