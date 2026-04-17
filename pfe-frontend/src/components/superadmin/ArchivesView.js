@@ -37,7 +37,7 @@ const ArchivesView = ({ setSnackbar, isMobile = false, isTablet = false }) => {
     const fetchArchives = async () => {
         setLoading(true);
         try {
-            const response = await axios.get('https://memoiresignaturenumerique.onrender.com/api/archivage/liste', { withCredentials: true });
+            const response = await axios.get('https://trustsign-backend-3zsj.onrender.com/api/archivage/liste', { withCredentials: true });
             setArchives(response.data);
             calculerStats(response.data);
         } catch (error) {
@@ -49,7 +49,7 @@ const ArchivesView = ({ setSnackbar, isMobile = false, isTablet = false }) => {
     const fetchNonArchivedDocuments = async () => {
         setLoadingNonArchived(true);
         try {
-            const response = await axios.get('https://memoiresignaturenumerique.onrender.com/api/archivage/documents-non-archives', { withCredentials: true });
+            const response = await axios.get('https://trustsign-backend-3zsj.onrender.com/api/archivage/documents-non-archives', { withCredentials: true });
             setNonArchivedDocs(response.data);
         } catch (error) {
             console.error("Erreur chargement documents non archivés:", error);
@@ -68,7 +68,7 @@ const ArchivesView = ({ setSnackbar, isMobile = false, isTablet = false }) => {
         if (!selectedDocToArchive) return;
         setLoading(true);
         try {
-            await axios.post(`https://memoiresignaturenumerique.onrender.com/api/archivage/archiver/${selectedDocToArchive.id}?niveau=${archiveLevel}`, {}, { withCredentials: true });
+            await axios.post(`https://trustsign-backend-3zsj.onrender.com/api/archivage/archiver/${selectedDocToArchive.id}?niveau=${archiveLevel}`, {}, { withCredentials: true });
             if (setSnackbar) setSnackbar({ open: true, message: `Document "${selectedDocToArchive.nom}" archivé avec succès`, severity: 'success' });
             setOpenArchiveDialog(false);
             setSelectedDocToArchive(null);
@@ -82,7 +82,7 @@ const ArchivesView = ({ setSnackbar, isMobile = false, isTablet = false }) => {
 
     const verifierIntegrite = async (documentId) => {
         try {
-            const response = await axios.get(`https://memoiresignaturenumerique.onrender.com/api/archivage/verifier/${documentId}`, { withCredentials: true });
+            const response = await axios.get(`https://trustsign-backend-3zsj.onrender.com/api/archivage/verifier/${documentId}`, { withCredentials: true });
             if (setSnackbar) setSnackbar({ open: true, message: response.data.integre ? "Archive intègre ✅" : "Archive corrompue ❌", severity: response.data.integre ? 'success' : 'error' });
         } catch (error) {
             if (setSnackbar) setSnackbar({ open: true, message: "Erreur lors de la vérification", severity: 'error' });
@@ -91,7 +91,7 @@ const ArchivesView = ({ setSnackbar, isMobile = false, isTablet = false }) => {
 
     const exporterArchive = async (documentId, reference) => {
         try {
-            const response = await axios.get(`https://memoiresignaturenumerique.onrender.com/api/archivage/exporter/${documentId}`, { withCredentials: true, responseType: 'blob' });
+            const response = await axios.get(`https://trustsign-backend-3zsj.onrender.com/api/archivage/exporter/${documentId}`, { withCredentials: true, responseType: 'blob' });
             const url = window.URL.createObjectURL(new Blob([response.data]));
             const link = document.createElement('a');
             link.href = url;
@@ -109,7 +109,7 @@ const ArchivesView = ({ setSnackbar, isMobile = false, isTablet = false }) => {
     const supprimerArchive = async (archiveId) => {
         if (!window.confirm("Confirmer la suppression de cette archive ?")) return;
         try {
-            await axios.delete(`https://memoiresignaturenumerique.onrender.com/api/archivage/${archiveId}`, { withCredentials: true });
+            await axios.delete(`https://trustsign-backend-3zsj.onrender.com/api/archivage/${archiveId}`, { withCredentials: true });
             if (setSnackbar) setSnackbar({ open: true, message: "Archive supprimée avec succès", severity: 'success' });
             fetchArchives();
         } catch (error) {
@@ -120,7 +120,7 @@ const ArchivesView = ({ setSnackbar, isMobile = false, isTablet = false }) => {
     const purgerArchivesExpirees = async () => {
         if (!window.confirm("⚠️ Cette action supprimera définitivement toutes les archives expirées. Continuer ?")) return;
         try {
-            const response = await axios.delete('https://memoiresignaturenumerique.onrender.com/api/archivage/purger', { withCredentials: true });
+            const response = await axios.delete('https://trustsign-backend-3zsj.onrender.com/api/archivage/purger', { withCredentials: true });
             if (setSnackbar) setSnackbar({ open: true, message: `${response.data.archivesPurgees} archive(s) purgée(s) avec succès`, severity: 'success' });
             fetchArchives();
         } catch (error) {

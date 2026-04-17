@@ -7,7 +7,9 @@ import {
     VerifiedUser, Security, CheckCircle, Error as ErrorIcon,
     Refresh, Warning, Info
 } from '@mui/icons-material';
-import API from '../../services/api';
+
+// URL de l'API backend
+const API_BASE_URL = 'https://trustsign-backend-3zsj.onrender.com';
 
 const VerificationCertificat = () => {
     const [loading, setLoading] = useState(false);
@@ -22,15 +24,29 @@ const VerificationCertificat = () => {
         setLoading(true);
         setResultat(null);
         try {
-            const response = await API.get('/pki/verifier-mon-certificat');
-            setResultat(response.data);
-            setStatutGlobal(response.data.valide ? 'succes' : 'erreur');
+            const response = await fetch(`${API_BASE_URL}/api/pki/verifier-mon-certificat`, {
+                method: 'GET',
+                credentials: 'include',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Accept': 'application/json'
+                }
+            });
+            
+            if (!response.ok) {
+                const errorData = await response.json();
+                throw new Error(errorData.erreur || `HTTP ${response.status}`);
+            }
+            
+            const data = await response.json();
+            setResultat(data);
+            setStatutGlobal(data.valide ? 'succes' : 'erreur');
         } catch (error) {
             console.error("Erreur vérification:", error);
             setStatutGlobal('erreur');
             setResultat({ 
                 valide: false, 
-                resume: error.response?.data?.erreur || "Erreur lors de la vérification" 
+                resume: error.message || "Erreur lors de la vérification" 
             });
         } finally {
             setLoading(false);

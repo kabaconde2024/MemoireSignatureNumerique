@@ -29,7 +29,7 @@ import axios from 'axios';
 // Service IA (FastAPI) pour l'audit intelligent
 const IA_API_URL = process.env.REACT_APP_IA_API_URL || 'http://localhost:8000';
 // Backend Spring Boot pour les données
-const SPRING_API_URL = process.env.REACT_APP_SPRING_API_URL || 'https://memoiresignaturenumerique.onrender.com';
+const SPRING_API_URL = process.env.REACT_APP_SPRING_API_URL || 'https://trustsign-backend-3zsj.onrender.com';
 
 // Configuration axios avec le token
 const getAuthConfig = () => {

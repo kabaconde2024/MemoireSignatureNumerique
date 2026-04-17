@@ -5,7 +5,7 @@ import { Box, Button, Typography, Paper, Table, TableBody, TableCell, TableConta
 
 const ListeDocumentsAutoSignes = ({ setSnackbar, isMobile = false }) => {
     const [documents, setDocuments] = useState([]);
-    const API_BASE_URL = 'https://memoiresignaturenumerique.onrender.com/api/documents';
+    const API_BASE_URL = 'https://trustsign-backend-3zsj.onrender.com/api/documents';
     const isSmallScreen = useMediaQuery('(max-width:600px)');
     const mobile = isMobile || isSmallScreen;
 

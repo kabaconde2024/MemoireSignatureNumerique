@@ -1,8 +1,29 @@
 import React, { useState } from 'react';
 import { Box, TextField, Button, Typography, Container, Alert, CircularProgress, InputAdornment } from '@mui/material';
 import { Email, Lock, Security } from '@mui/icons-material';
-import API from '../../services/api';
 import { useNavigate } from 'react-router-dom';
+
+// URL de l'API backend
+const API_BASE_URL = 'https://trustsign-backend-3zsj.onrender.com';
+
+// Fonction pour les requêtes API avec cookie
+const fetchAPI = async (endpoint, options = {}) => {
+    const response = await fetch(`${API_BASE_URL}${endpoint}`, {
+        ...options,
+        credentials: 'include',
+        headers: {
+            'Content-Type': 'application/json',
+            'Accept': 'application/json',
+            ...options.headers
+        }
+    });
+    
+    if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.erreur || `HTTP ${response.status}`);
+    }
+    return response.json();
+};
 
 const MotDePasseOublie = () => {
     const [step, setStep] = useState(1);
@@ -17,16 +38,20 @@ const MotDePasseOublie = () => {
     const handleDemande = async (e) => {
         e.preventDefault();
         setLoading(true);
-        setError(''); // Reset de l'erreur
+        setError('');
         try {
-            const response = await API.post('/mot-de-passe-oublie', { email });
-            setMessage(response.data.message);
+            const data = await fetchAPI('/api/mot-de-passe-oublie', { 
+                method: 'POST',
+                body: JSON.stringify({ email })
+            });
+            setMessage(data.message);
             setStep(2);
         } catch (err) {
-            // CAPTURE DE L'ERREUR DU BACKEND
-            const msg = err.response?.data?.erreur || "Impossible de contacter le serveur.";
+            const msg = err.message || "Impossible de contacter le serveur.";
             setError(msg);
-        } finally { setLoading(false); }
+        } finally { 
+            setLoading(false); 
+        }
     };
 
     const handleReset = async (e) => {
@@ -34,12 +59,17 @@ const MotDePasseOublie = () => {
         setLoading(true);
         setError('');
         try {
-            await API.post('/reinitialiser-mot-de-passe', { email, code, nouveauMotDePasse });
+            await fetchAPI('/api/reinitialiser-mot-de-passe', { 
+                method: 'POST',
+                body: JSON.stringify({ email, code, nouveauMotDePasse })
+            });
             setMessage("Mot de passe modifié ! Redirection...");
             setTimeout(() => navigate('/'), 2000);
         } catch (err) {
-            setError(err.response?.data?.erreur || "Code invalide ou expiré.");
-        } finally { setLoading(false); }
+            setError(err.message || "Code invalide ou expiré.");
+        } finally { 
+            setLoading(false); 
+        }
     };
 
     const fieldStyle = {

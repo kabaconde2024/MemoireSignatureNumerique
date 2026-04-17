@@ -2,9 +2,28 @@ import React, { useState, useRef, useEffect } from 'react';
 import { Document, Page, pdfjs } from 'react-pdf';
 import { Box, Button, Typography, Paper, CircularProgress, Stack, Zoom, Alert, useMediaQuery } from '@mui/material';
 import { CloudUpload, Download, HistoryEdu, CheckCircleOutline, PictureAsPdf, Warning } from '@mui/icons-material';
-import API from '../../services/api';
 
 pdfjs.GlobalWorkerOptions.workerSrc = `//unpkg.com/pdfjs-dist@${pdfjs.version}/build/pdf.worker.min.mjs`;
+
+// URL de l'API backend
+const API_BASE_URL = 'https://trustsign-backend-3zsj.onrender.com';
+
+// Fonction pour les requêtes API avec cookie
+const fetchAPI = async (endpoint, options = {}) => {
+    const response = await fetch(`${API_BASE_URL}${endpoint}`, {
+        ...options,
+        credentials: 'include',
+        headers: {
+            'Accept': 'application/json',
+            ...options.headers
+        }
+    });
+    
+    if (!response.ok) {
+        throw new Error(`HTTP ${response.status}`);
+    }
+    return response.json();
+};
 
 const AutoSignatureDocument = ({ setSnackbar, isMobile = false }) => {
     const [file, setFile] = useState(null);
@@ -20,9 +39,8 @@ const AutoSignatureDocument = ({ setSnackbar, isMobile = false }) => {
 
     const checkUserSignature = async () => {
         try {
-            const response = await API.get('/utilisateur/mon-profil');
-            const userData = response.data;
-            if (userData.imageSignature && userData.imageSignature !== '') {
+            const data = await fetchAPI('/utilisateur/mon-profil');
+            if (data.imageSignature && data.imageSignature !== '') {
                 setHasSignature(true);
             } else {
                 setHasSignature(false);
@@ -86,30 +104,46 @@ const AutoSignatureDocument = ({ setSnackbar, isMobile = false }) => {
         setLoading(true);
         
         try {
+            // Upload du fichier avec FormData
             const formData = new FormData();
             formData.append('file', file);
             
-            const uploadRes = await API.post('/documents/upload', formData, { headers: { 'Content-Type': 'multipart/form-data' } });
-            
-            const response = await API.post('/signature/appliquer-auto-signature', null, {
-                params: {
-                    documentId: uploadRes.data.id,
-                    x: coords.x,
-                    y: coords.y,
-                    pageNumber: coords.page,
-                    displayWidth: mobile ? 400 : 800,
-                    displayHeight: coords.displayPageHeight
-                },
-                responseType: 'blob'
+            const uploadResponse = await fetch(`${API_BASE_URL}/api/documents/upload`, {
+                method: 'POST',
+                credentials: 'include',
+                body: formData
             });
             
-            const url = URL.createObjectURL(new Blob([response.data], { type: 'application/pdf' }));
+            if (!uploadResponse.ok) {
+                throw new Error(`Upload failed: ${uploadResponse.status}`);
+            }
+            
+            const uploadData = await uploadResponse.json();
+            
+            // Application de la signature
+            const signResponse = await fetch(`${API_BASE_URL}/api/signature/appliquer-auto-signature?documentId=${uploadData.id}&x=${coords.x}&y=${coords.y}&pageNumber=${coords.page}&displayWidth=${mobile ? 400 : 800}&displayHeight=${coords.displayPageHeight}`, {
+                method: 'POST',
+                credentials: 'include',
+                headers: {
+                    'Accept': 'application/pdf'
+                }
+            });
+            
+            if (!signResponse.ok) {
+                const errorData = await signResponse.json();
+                throw new Error(errorData.erreur || 'Erreur lors de la signature');
+            }
+            
+            const blob = await signResponse.blob();
+            const url = URL.createObjectURL(blob);
             setSignedFileUrl(url);
             setSnackbar({ open: true, message: "✅ Document signé avec succès !", severity: 'success' });
         } catch (err) {
             console.error("Erreur:", err);
-            setSnackbar({ open: true, message: `❌ ${err.response?.data?.erreur || err.message}`, severity: 'error' });
-        } finally { setLoading(false); }
+            setSnackbar({ open: true, message: `❌ ${err.message}`, severity: 'error' });
+        } finally { 
+            setLoading(false); 
+        }
     };
 
     useEffect(() => {

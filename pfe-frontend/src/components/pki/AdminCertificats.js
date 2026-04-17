@@ -23,7 +23,28 @@ import {
     Badge as BadgeIcon,
     DeleteSweep as DeleteSweepIcon
 } from '@mui/icons-material';
-import API from '../../services/api';
+
+// URL de l'API backend
+const API_BASE_URL = 'https://trustsign-backend-3zsj.onrender.com';
+
+// Fonction pour les requêtes API avec cookie
+const fetchAPI = async (endpoint, options = {}) => {
+    const response = await fetch(`${API_BASE_URL}${endpoint}`, {
+        ...options,
+        credentials: 'include',
+        headers: {
+            'Content-Type': 'application/json',
+            'Accept': 'application/json',
+            ...options.headers
+        }
+    });
+    
+    if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.error || `HTTP ${response.status}`);
+    }
+    return response.json();
+};
 
 const AdminCertificats = () => {
     const [demandes, setDemandes] = useState([]);
@@ -45,14 +66,14 @@ const AdminCertificats = () => {
     const fetchData = useCallback(async () => {
         setLoading(true);
         try {
-            const [resDemandes, resActifs, resStats] = await Promise.all([
-                API.get('/admin/pki/demandes-en-attente'),
-                API.get('/admin/pki/certificats-actifs'),
-                API.get('/admin/pki/stats')
+            const [demandesData, actifsData, statsData] = await Promise.all([
+                fetchAPI('/api/admin/pki/demandes-en-attente'),
+                fetchAPI('/api/admin/pki/certificats-actifs'),
+                fetchAPI('/api/admin/pki/stats')
             ]);
-            setDemandes(resDemandes.data);
-            setCertificatsActifs(resActifs.data);
-            setStats(resStats.data);
+            setDemandes(demandesData);
+            setCertificatsActifs(actifsData);
+            setStats(statsData);
         } catch (error) {
             console.error("Erreur PKI:", error);
             setMessage({ text: "Erreur lors du chargement des services PKI", type: 'error' });
@@ -73,12 +94,12 @@ const AdminCertificats = () => {
     const handleApprove = async (userId) => {
         try {
             setMessage({ text: "Initialisation du SoftHSM et signature cryptographique...", type: 'info' });
-            const response = await API.post(`/admin/pki/approve/${userId}`);
-            setMessage({ text: response.data.message || "Certificat généré avec succès !", type: 'success' });
+            const data = await fetchAPI(`/api/admin/pki/approve/${userId}`, { method: 'POST' });
+            setMessage({ text: data.message || "Certificat généré avec succès !", type: 'success' });
             setOpenPreviewModal(false);
             fetchData();
         } catch (error) {
-            const errorMsg = error.response?.data?.error || "Échec de l'opération cryptographique";
+            const errorMsg = error.message || "Échec de l'opération cryptographique";
             setMessage({ text: errorMsg, type: 'error' });
         }
     };
@@ -97,8 +118,8 @@ const AdminCertificats = () => {
 
     const nettoyerCertificatsExpires = async () => {
         try {
-            const response = await API.get('/admin/pki/nettoyer-certificats-expires');
-            setSnackbar({ open: true, message: response.data.message, severity: 'success' });
+            const data = await fetchAPI('/api/admin/pki/nettoyer-certificats-expires');
+            setSnackbar({ open: true, message: data.message, severity: 'success' });
             fetchData();
         } catch (error) {
             setSnackbar({ open: true, message: "Erreur lors du nettoyage", severity: 'error' });

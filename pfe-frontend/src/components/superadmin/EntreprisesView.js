@@ -15,7 +15,7 @@ const EntreprisesView = ({ setSnackbar }) => {
     const fetchCompanies = async () => {
         setLoading(true);
         try {
-            const response = await axios.get('https://memoiresignaturenumerique.onrender.com/api/admin/entreprises', { withCredentials: true });
+            const response = await axios.get('https://trustsign-backend-3zsj.onrender.com/api/admin/entreprises', { withCredentials: true });
             setCompanies(response.data);
         } catch (error) {
             console.error("Erreur:", error);

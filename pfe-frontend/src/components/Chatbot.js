@@ -12,10 +12,26 @@ import {
     SmartToy as BotIcon,
     Person as PersonIcon
 } from '@mui/icons-material';
-import API from '../../services/api';
 
 // Configuration de l'API du service IA
 const IA_API_URL = process.env.REACT_APP_IA_API_URL || 'https://trustsign-ia-service-v2.onrender.com';
+
+// Fonction pour les requêtes API
+const fetchAPI = async (url, options = {}) => {
+    const response = await fetch(url, {
+        ...options,
+        headers: {
+            'Content-Type': 'application/json',
+            'Accept': 'application/json',
+            ...options.headers
+        }
+    });
+    
+    if (!response.ok) {
+        throw new Error(`HTTP ${response.status}`);
+    }
+    return response.json();
+};
 
 const Chatbot = () => {
     const [open, setOpen] = useState(false);
@@ -44,9 +60,8 @@ const Chatbot = () => {
     useEffect(() => {
         const fetchSuggestions = async () => {
             try {
-                // ✅ Appel au service IA déployé sur Render
-                const response = await API.get(`${IA_API_URL}/api/chatbot/suggestions`);
-                setSuggestions(response.data.suggestions);
+                const data = await fetchAPI(`${IA_API_URL}/api/chatbot/suggestions`);
+                setSuggestions(data.suggestions);
             } catch (error) {
                 console.error('Erreur chargement suggestions:', error);
                 // Suggestions par défaut en cas d'erreur
@@ -86,19 +101,32 @@ const Chatbot = () => {
             const userStr = localStorage.getItem('user');
             const user = userStr ? JSON.parse(userStr) : null;
             
-            // ✅ Appel au service IA déployé sur Render
-            const response = await API.post(`${IA_API_URL}/api/chatbot/message`, {
-                message: text,
-                user_email: user?.email,
-                user_role: user?.role
+            // Appel au service IA déployé sur Render
+            const response = await fetch(`${IA_API_URL}/api/chatbot/message`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Accept': 'application/json'
+                },
+                body: JSON.stringify({
+                    message: text,
+                    user_email: user?.email,
+                    user_role: user?.role
+                })
             });
+            
+            if (!response.ok) {
+                throw new Error(`HTTP ${response.status}`);
+            }
+            
+            const data = await response.json();
 
             // Ajouter la réponse du bot
             const botMessage = {
                 id: Date.now() + 1,
-                text: response.data.response,
+                text: data.response,
                 sender: 'bot',
-                suggestions: response.data.suggestions,
+                suggestions: data.suggestions,
                 timestamp: new Date()
             };
             setMessages(prev => [...prev, botMessage]);
@@ -109,9 +137,9 @@ const Chatbot = () => {
             // Message d'erreur avec fallback
             let errorText = "❌ Désolé, je rencontre une difficulté technique. Veuillez réessayer dans quelques instants.";
             
-            if (error.response?.status === 503) {
+            if (error.message?.includes('503')) {
                 errorText = "🔧 Le service de chat est temporairement indisponible. Veuillez réessayer plus tard ou contacter le support à support@trustsign.com.";
-            } else if (error.response?.status === 401 || error.response?.status === 403) {
+            } else if (error.message?.includes('401') || error.message?.includes('403')) {
                 errorText = "🔐 Session expirée. Veuillez vous reconnecter pour utiliser le chat.";
             }
             

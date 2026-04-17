@@ -55,7 +55,7 @@ const SignaturePkiPage = () => {
     useEffect(() => {
         const checkAuthAndCertificat = async () => {
             try {
-                const authRes = await axios.get('https://memoiresignaturenumerique.onrender.com/api/auth/check', { withCredentials: true });
+                const authRes = await axios.get('https://trustsign-backend-3zsj.onrender.com/api/auth/check', { withCredentials: true });
                 
                 if (!authRes.data.authentifie) {
                     navigate(`/connexion?redirect=/signature-pki/${token}`);
@@ -63,7 +63,7 @@ const SignaturePkiPage = () => {
                 }
                 setIsAuthenticated(true);
                 
-                const certRes = await axios.get('https://memoiresignaturenumerique.onrender.com/api/utilisateur/pki/mon-statut', { withCredentials: true });
+                const certRes = await axios.get('https://trustsign-backend-3zsj.onrender.com/api/utilisateur/pki/mon-statut', { withCredentials: true });
                 
                 if (certRes.data.status !== 'ACTIVE') {
                     alert("Vous devez avoir un certificat actif pour utiliser la signature PKI. Veuillez en faire la demande dans votre tableau de bord.");
@@ -72,7 +72,7 @@ const SignaturePkiPage = () => {
                 }
                 setHasCertificat(true);
                 
-                const invRes = await axios.get(`https://memoiresignaturenumerique.onrender.com/api/signature/details/${token}`);
+                const invRes = await axios.get(`https://trustsign-backend-3zsj.onrender.com/api/signature/details/${token}`);
                 
                 // ✅ Vérifier si l'invitation a expiré
                 if (invRes.data.dateExpiration && new Date(invRes.data.dateExpiration) < new Date()) {
@@ -82,7 +82,7 @@ const SignaturePkiPage = () => {
                 }
                 
                 setInvitation(invRes.data);
-                setPdfUrl(`https://memoiresignaturenumerique.onrender.com/api/signature/apercu/${token}`);
+                setPdfUrl(`https://trustsign-backend-3zsj.onrender.com/api/signature/apercu/${token}`);
                 
             } catch (err) {
                 console.error("Erreur de vérification:", err);
@@ -102,7 +102,7 @@ const SignaturePkiPage = () => {
             
             try {
                 const response = await axios.get(
-                    `https://memoiresignaturenumerique.onrender.com/api/signature/verifier-certificat-expediteur/${token}`,
+                    `https://trustsign-backend-3zsj.onrender.com/api/signature/verifier-certificat-expediteur/${token}`,
                     { withCredentials: true }
                 );
                 setCertificatExpediteurValide(response.data.valide);
@@ -191,7 +191,7 @@ const SignaturePkiPage = () => {
         
         try {
             setLoading(true);
-            await axios.post(`https://memoiresignaturenumerique.onrender.com/api/signature/send-otp?token=${token}`);
+            await axios.post(`https://trustsign-backend-3zsj.onrender.com/api/signature/send-otp?token=${token}`);
             setIsOtpSent(true);
             alert(`✅ Code de sécurité envoyé à : ${invitation.emailDestinataire}`);
         } catch (err) {
@@ -252,7 +252,7 @@ const SignaturePkiPage = () => {
 
             console.log("📤 Envoi signature PKI:", payload);
 
-            const endpoint = 'https://memoiresignaturenumerique.onrender.com/api/signature/pki/executer';
+            const endpoint = 'https://trustsign-backend-3zsj.onrender.com/api/signature/pki/executer';
             
             const pkiResponse = await axios.post(endpoint, payload, { 
                 withCredentials: true,
