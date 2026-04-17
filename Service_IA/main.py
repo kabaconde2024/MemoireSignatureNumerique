@@ -26,9 +26,9 @@ app = FastAPI(
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[
-        "https://memoire-frontend.onrender.com",  # Votre frontend sur Render
-        "https://memoiresignaturenumerique.onrender.com",
-        "https://trustsign-ia-service-v2.onrender.com",
+        "https://trustsign-frontend.onrender.com",  # Votre frontend sur Render
+        "https://trustsign-backend-3zsj.onrender.com",
+        "https://trustsign-ia.onrender.com",
         "http://localhost:3000",
         "http://localhost:8000"
     ],

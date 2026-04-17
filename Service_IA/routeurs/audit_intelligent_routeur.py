@@ -12,7 +12,7 @@ urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 logger = logging.getLogger(__name__)
 routeur = APIRouter(prefix="/api/ia/audit", tags=["Audit Intelligent"])
 
-SPRING_BOOT_URL = os.getenv("SPRING_BOOT_URL", "https://memoiresignaturenumerique.onrender.com")
+SPRING_BOOT_URL = os.getenv("SPRING_BOOT_URL", "https://trustsign-backend-3zsj.onrender.com")
 SPRING_BOOT_API_KEY = os.getenv("SPRING_BOOT_API_KEY", "trustsign-secret-key-2024")
 VERIFY_SSL = os.getenv("SPRING_BOOT_VERIFY_SSL", "false").lower() == "true"
 
