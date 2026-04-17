@@ -1,4 +1,4 @@
-// components/superadmin/StatsView.js - VERSION COMPLÈTE CORRIGÉE
+// components/superadmin/StatsView.js - Version avec URLs directes
 import React, { useState, useEffect } from 'react';
 import { 
     Box, Grid, Card, CardContent, Typography, Stack, 
@@ -11,7 +11,9 @@ import {
     TrendingUp, VerifiedUser, Pending, CheckCircle,
     Draw, AutoFixHigh, Fingerprint
 } from '@mui/icons-material';
-import API from '../../services/api';  // ✅ Utilisation de l'instance API
+
+// URL de l'API backend
+const API_BASE_URL = 'https://trustsign-backend-3zsj.onrender.com';
 
 const StatsView = ({ setSnackbar, isMobile = false, isTablet = false }) => {
     const [stats, setStats] = useState({
@@ -36,36 +38,52 @@ const StatsView = ({ setSnackbar, isMobile = false, isTablet = false }) => {
     const isSmallScreen = useMediaQuery('(max-width:600px)');
     const mobile = isMobile || isSmallScreen;
 
+    // Fonction pour les requêtes API avec cookie
+    const fetchAPI = async (endpoint) => {
+        const response = await fetch(`${API_BASE_URL}${endpoint}`, {
+            method: 'GET',
+            credentials: 'include',
+            headers: {
+                'Content-Type': 'application/json',
+                'Accept': 'application/json'
+            }
+        });
+        
+        if (!response.ok) {
+            throw new Error(`HTTP ${response.status}`);
+        }
+        return response.json();
+    };
+
     useEffect(() => {
         const fetchStats = async () => {
             setLoading(true);
             try {
-                // ✅ Utilisation de l'instance API (gère le cookie automatiquement)
                 const [usersRes, certRes, docsRes, activitiesRes, signaturesRes] = await Promise.all([
-                    API.get('/admin/stats/utilisateurs'),
-                    API.get('/admin/pki/stats'),
-                    API.get('/admin/stats/documents'),
-                    API.get('/admin/stats/activites'),
-                    API.get('/admin/stats/signatures')
+                    fetchAPI('/api/admin/stats/utilisateurs'),
+                    fetchAPI('/api/admin/pki/stats'),
+                    fetchAPI('/api/admin/stats/documents'),
+                    fetchAPI('/api/admin/stats/activites'),
+                    fetchAPI('/api/admin/stats/signatures')
                 ]);
                 
                 setStats({
-                    totalUsers: usersRes.data.total || 0,
-                    actifs: usersRes.data.actifs || 0,
-                    inactifs: usersRes.data.inactifs || 0,
-                    superAdmins: usersRes.data.superAdmins || 0,
-                    adminsEntreprise: usersRes.data.adminsEntreprise || 0,
-                    utilisateurs: usersRes.data.utilisateurs || 0,
-                    totalDocuments: docsRes.data.total || 0,
-                    signes: docsRes.data.signes || 0,
-                    nonSignes: docsRes.data.nonSignes || 0,
-                    pendingCertificates: certRes.data.pending || 0,
-                    activeCertificates: certRes.data.active || 0,
-                    signaturesSimple: signaturesRes.data.simple || 0,
-                    signaturesPKI: signaturesRes.data.pki || 0,
-                    signaturesAuto: signaturesRes.data.auto || 0
+                    totalUsers: usersRes.total || 0,
+                    actifs: usersRes.actifs || 0,
+                    inactifs: usersRes.inactifs || 0,
+                    superAdmins: usersRes.superAdmins || 0,
+                    adminsEntreprise: usersRes.adminsEntreprise || 0,
+                    utilisateurs: usersRes.utilisateurs || 0,
+                    totalDocuments: docsRes.total || 0,
+                    signes: docsRes.signes || 0,
+                    nonSignes: docsRes.nonSignes || 0,
+                    pendingCertificates: certRes.pending || 0,
+                    activeCertificates: certRes.active || 0,
+                    signaturesSimple: signaturesRes.simple || 0,
+                    signaturesPKI: signaturesRes.pki || 0,
+                    signaturesAuto: signaturesRes.auto || 0
                 });
-                setRecentActivities(activitiesRes.data || []);
+                setRecentActivities(activitiesRes || []);
             } catch (error) {
                 console.error("Erreur chargement stats:", error);
                 if (setSnackbar) {

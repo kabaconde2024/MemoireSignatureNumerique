@@ -4,7 +4,7 @@ const getBaseURL = () => {
   if (process.env.NODE_ENV === 'production') {
     return `${process.env.REACT_APP_API_URL}/api`;
   }
-  return 'https://memoiresignaturenumerique.onrender.com/api';
+  return 'https://trustsign-backend-3zsj.onrender.com/api';
 };
 
 const API = axios.create({
