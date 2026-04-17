@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import { TextField, Button, Typography, Paper, Alert, Container, Box } from '@mui/material';
-import API from '../services/api';
+import API from '../../services/api';
 
 const FinaliserInscription = () => {
     const [searchParams] = useSearchParams();

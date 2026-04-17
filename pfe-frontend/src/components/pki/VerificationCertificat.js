@@ -7,7 +7,7 @@ import {
     VerifiedUser, Security, CheckCircle, Error as ErrorIcon,
     Refresh, Warning, Info
 } from '@mui/icons-material';
-import API from '../services/api';
+import API from '../../services/api';
 
 const VerificationCertificat = () => {
     const [loading, setLoading] = useState(false);
