@@ -104,43 +104,28 @@ public class ConfigurationSecurite {
         return http.build();
     }
 
-    @Bean
-    public CorsConfigurationSource corsConfigurationSource() {
-        CorsConfiguration configuration = new CorsConfiguration();
-        
-        // Configuration des origines autorisées
-        configuration.setAllowedOrigins(Arrays.asList(
-                "http://localhost:3000",
-                "https://localhost:3000",
-                "https://memoire-frontend.onrender.com"
-        ));
-        
-        // Méthodes HTTP autorisées
-        configuration.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"));
-        
-        // Headers autorisés
-        configuration.setAllowedHeaders(Arrays.asList(
-                "Authorization", 
-                "Content-Type", 
-                "Accept", 
-                "X-Requested-With", 
-                "Cache-Control",
-                "Cookie",
-                "X-Debug-Mode"
-        ));
-        
-        // Autoriser l'envoi des cookies (withCredentials: true côté React)
-        configuration.setAllowCredentials(true);
-        
-        // Headers exposés au client
-        configuration.setExposedHeaders(Arrays.asList(
-                "Authorization", 
-                "Set-Cookie",
-                "Content-Disposition"
-        ));
+   @Bean
+public CorsConfigurationSource corsConfigurationSource() {
+    CorsConfiguration configuration = new CorsConfiguration();
+    configuration.setAllowedOrigins(Arrays.asList(
+        "https://localhost:3000",
+        "http://localhost:3000",
+        "https://trustsign-frontend.onrender.com",  // ✅ AJOUTER CETTE LIGNE
+        "https://trustsign-backend-3zsj.onrender.com"
+    ));
+    configuration.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"));
+    configuration.setAllowedHeaders(Arrays.asList(
+        "Authorization",
+        "Content-Type",
+        "Accept",
+        "X-Requested-With",
+        "Cache-Control"
+    ));
+    configuration.setAllowCredentials(true);
+    configuration.setExposedHeaders(Collections.singletonList("Authorization"));
 
-        UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
-        source.registerCorsConfiguration("/**", configuration);
-        return source;
-    }
+    UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
+    source.registerCorsConfiguration("/**", configuration);
+    return source;
+}
 }

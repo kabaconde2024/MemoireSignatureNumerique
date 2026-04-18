@@ -14,7 +14,7 @@ import pfe.back_end.services.document.ServiceGestionDocuments;
 @CrossOrigin(origins = {
     "http://localhost:3000",
     "https://localhost:3000", 
-    "https://memoire-frontend.onrender.com"
+    "https://trustsign-frontend.onrender.com"
 }, allowCredentials = "true")
 public class SignatureApercuControleur {
 

@@ -17,7 +17,7 @@ import java.util.stream.Collectors;
 
 @RestController
 @RequestMapping("/api/ia")
-@CrossOrigin(origins = {"https://localhost:3000", "http://localhost:8000"})
+@CrossOrigin(origins = {"https://localhost:3000", "http://localhost:8000","https://trustsign-frontend.onrender.com"})
 public class IACommunicationController {
 
     @Autowired

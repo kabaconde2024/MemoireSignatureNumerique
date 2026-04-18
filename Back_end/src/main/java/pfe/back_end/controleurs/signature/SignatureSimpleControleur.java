@@ -21,7 +21,7 @@ import java.util.Map;
 @RequestMapping("/api/signature")
 @CrossOrigin(origins = {
     "http://localhost:3000", 
-    "https://memoire-frontend.onrender.com"
+    "https://trustsign-frontend.onrender.com"
 }, allowCredentials = "true")
 public class SignatureSimpleControleur {
 

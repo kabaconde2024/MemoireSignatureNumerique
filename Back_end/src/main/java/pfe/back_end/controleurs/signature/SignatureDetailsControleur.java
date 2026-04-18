@@ -13,7 +13,7 @@ import java.util.Map;
 @CrossOrigin(origins = {
     "http://localhost:3000",
     "https://localhost:3000", 
-    "https://memoire-frontend.onrender.com"
+    "https://trustsign-frontend.onrender.com"
 }, allowCredentials = "true")
 public class SignatureDetailsControleur {
 

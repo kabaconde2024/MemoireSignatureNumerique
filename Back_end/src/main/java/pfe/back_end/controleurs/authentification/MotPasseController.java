@@ -17,7 +17,7 @@ import java.util.Map;
 @CrossOrigin(origins = {
     "https://localhost:3000",
     "http://localhost:3000", 
-    "https://memoire-frontend.onrender.com"  // ← AJOUTEZ CETTE LIGNE
+    "https://trustsign-frontend.onrender.com"  // ← AJOUTEZ CETTE LIGNE
 }, allowCredentials = "true")
 public class MotPasseController {
 
