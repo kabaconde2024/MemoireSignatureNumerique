@@ -21,7 +21,7 @@ public class InscriptionSuperAdmin {
     private static final Logger logger = LoggerFactory.getLogger(InscriptionSuperAdmin.class);
 
     // ✅ CORRECTION : Utilisation des noms exacts des variables d'environnement définies sur Render
-    @Value("${SUPERADMIN_EMAIL:admin@example.com}")
+    @Value("${SUPERADMIN_EMAIL:kaba.conde@isimg.tn}")
     private String emailSuperAdmin;
 
     @Value("${SUPERADMIN_PASSWORD:}")
