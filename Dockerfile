@@ -8,17 +8,24 @@ COPY Back_end/pom.xml .
 # 2. Supprimer l'ancien cache JJWT pour forcer le re-téléchargement
 RUN rm -rf ~/.m2/repository/io/jsonwebtoken
 
-# 3. On télécharge explicitement la dépendance manquante avant la compilation
+# 3. Nettoyer le cache Lombok
+RUN rm -rf ~/.m2/repository/org/projectlombok
+
+# 4. On télécharge explicitement les dépendances
 RUN mvn dependency:get -Dartifact=org.springframework.boot:spring-boot-starter-mail:3.4.2 -B
 RUN mvn dependency:get -Dartifact=io.jsonwebtoken:jjwt-api:0.12.3 -B
 RUN mvn dependency:get -Dartifact=io.jsonwebtoken:jjwt-impl:0.12.3 -B
 RUN mvn dependency:get -Dartifact=io.jsonwebtoken:jjwt-jackson:0.12.3 -B
+RUN mvn dependency:get -Dartifact=org.projectlombok:lombok:1.18.30 -B
 
-# 4. On copie le code source
+# 5. On copie le code source
 COPY Back_end/src ./src
 
-# 5. On compile avec -U (Force Update) pour écraser les caches défectueux
-RUN mvn clean package -U -DskipTests
+# 6. On compile avec Lombok activé explicitement
+RUN mvn clean compile -U -DskipTests -Dmaven.compiler.parameters=true
+
+# 7. On package
+RUN mvn package -U -DskipTests
 
 # --- Étape 2 : Image d'exécution ---
 FROM eclipse-temurin:21-jre
