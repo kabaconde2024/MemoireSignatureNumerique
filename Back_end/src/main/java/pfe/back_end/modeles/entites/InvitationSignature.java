@@ -3,16 +3,11 @@ package pfe.back_end.modeles.entites;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
-import lombok.Data;
 import lombok.NoArgsConstructor;
-
-// ✅ ON SUPPRIME l'import javax.swing et on n'importe RIEN pour Document
-// car il est déjà dans le même dossier (package) que cette classe.
 import java.time.LocalDateTime;
 
 @Entity
 @Table(name = "invitations_signature")
-@Data
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
@@ -24,7 +19,7 @@ public class InvitationSignature {
 
     @ManyToOne
     @JoinColumn(name = "document_id", nullable = false)
-    private Document document; // ✅ Maintenant, c'est bien TON entité Document
+    private Document document;
 
     @ManyToOne
     @JoinColumn(name = "expediteur_id", nullable = false)
@@ -34,7 +29,6 @@ public class InvitationSignature {
     private String emailDestinataire;
 
     private String telephoneSignataire;
-
     private String nomSignataire;
     private String prenomSignataire;
 
@@ -51,6 +45,12 @@ public class InvitationSignature {
     private float coordonneeY;
     private int pageNumber;
 
+    @Column(name = "date_expiration")
+    private LocalDateTime dateExpiration;
+
+    @Column(name = "hash_document_signe", length = 64)
+    private String hashDocumentSigne;
+
     @PrePersist
     protected void onCreate() {
         if (this.dateInvitation == null) {
@@ -61,12 +61,56 @@ public class InvitationSignature {
         }
     }
 
-    @Column(name = "date_expiration")
-    private LocalDateTime dateExpiration;
-
-    @Column(name = "hash_document_signe", length = 64)
-    private String hashDocumentSigne;
-
+    // ==================== GETTERS ET SETTERS ====================
+    
+    public Long getId() { return id; }
+    public void setId(Long id) { this.id = id; }
+    
+    public Document getDocument() { return document; }
+    public void setDocument(Document document) { this.document = document; }
+    
+    public Utilisateur getExpediteur() { return expediteur; }
+    public void setExpediteur(Utilisateur expediteur) { this.expediteur = expediteur; }
+    
+    public String getEmailDestinataire() { return emailDestinataire; }
+    public void setEmailDestinataire(String emailDestinataire) { this.emailDestinataire = emailDestinataire; }
+    
+    public String getTelephoneSignataire() { return telephoneSignataire; }
+    public void setTelephoneSignataire(String telephoneSignataire) { this.telephoneSignataire = telephoneSignataire; }
+    
+    public String getNomSignataire() { return nomSignataire; }
+    public void setNomSignataire(String nomSignataire) { this.nomSignataire = nomSignataire; }
+    
+    public String getPrenomSignataire() { return prenomSignataire; }
+    public void setPrenomSignataire(String prenomSignataire) { this.prenomSignataire = prenomSignataire; }
+    
+    public String getTokenSignature() { return tokenSignature; }
+    public void setTokenSignature(String tokenSignature) { this.tokenSignature = tokenSignature; }
+    
+    public String getTypeSignature() { return typeSignature; }
+    public void setTypeSignature(String typeSignature) { this.typeSignature = typeSignature; }
+    
+    public String getStatut() { return statut; }
+    public void setStatut(String statut) { this.statut = statut; }
+    
+    public LocalDateTime getDateInvitation() { return dateInvitation; }
+    public void setDateInvitation(LocalDateTime dateInvitation) { this.dateInvitation = dateInvitation; }
+    
+    public LocalDateTime getDateSignature() { return dateSignature; }
+    public void setDateSignature(LocalDateTime dateSignature) { this.dateSignature = dateSignature; }
+    
+    public float getCoordonneeX() { return coordonneeX; }
+    public void setCoordonneeX(float coordonneeX) { this.coordonneeX = coordonneeX; }
+    
+    public float getCoordonneeY() { return coordonneeY; }
+    public void setCoordonneeY(float coordonneeY) { this.coordonneeY = coordonneeY; }
+    
+    public int getPageNumber() { return pageNumber; }
+    public void setPageNumber(int pageNumber) { this.pageNumber = pageNumber; }
+    
+    public LocalDateTime getDateExpiration() { return dateExpiration; }
+    public void setDateExpiration(LocalDateTime dateExpiration) { this.dateExpiration = dateExpiration; }
+    
     public String getHashDocumentSigne() { return hashDocumentSigne; }
     public void setHashDocumentSigne(String hashDocumentSigne) { this.hashDocumentSigne = hashDocumentSigne; }
 }

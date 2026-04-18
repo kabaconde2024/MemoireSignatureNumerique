@@ -3,14 +3,15 @@ package pfe.back_end.modeles.entites;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import jakarta.persistence.*;
-import lombok.*;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.NoArgsConstructor;
 import org.hibernate.annotations.JdbcTypeCode;
 import java.sql.Types;
 import java.time.LocalDateTime;
 
 @Entity
 @Table(name = "documents")
-@Data
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
@@ -38,11 +39,6 @@ public class Document {
     @Column(name = "hash_sha256", nullable = false)
     private String hashSha256;
 
-    /**
-     * Correction de l'erreur bytea :
-     * @JdbcTypeCode(Types.BINARY) force Hibernate à traiter ce champ comme un flux binaire
-     * pur, évitant la confusion avec les types Long/BigInt lors de l'insertion SQL.
-     */
     @Lob
     @JsonIgnore 
     @JdbcTypeCode(Types.BINARY)
@@ -85,4 +81,54 @@ public class Document {
             this.statut = StatutDocument.EN_ATTENTE;
         }
     }
+
+    // ==================== GETTERS ET SETTERS ====================
+    
+    public Long getId() { return id; }
+    public void setId(Long id) { this.id = id; }
+    
+    public String getNomFichier() { return nomFichier; }
+    public void setNomFichier(String nomFichier) { this.nomFichier = nomFichier; }
+    
+    public String getTypeMime() { return typeMime; }
+    public void setTypeMime(String typeMime) { this.typeMime = typeMime; }
+    
+    public long getTaille() { return taille; }
+    public void setTaille(long taille) { this.taille = taille; }
+    
+    public boolean isEstSigne() { return estSigne; }
+    public void setEstSigne(boolean estSigne) { this.estSigne = estSigne; }
+    
+    public String getCheminStockage() { return cheminStockage; }
+    public void setCheminStockage(String cheminStockage) { this.cheminStockage = cheminStockage; }
+    
+    public String getHashSha256() { return hashSha256; }
+    public void setHashSha256(String hashSha256) { this.hashSha256 = hashSha256; }
+    
+    public byte[] getContenu() { return contenu; }
+    public void setContenu(byte[] contenu) { this.contenu = contenu; }
+    
+    public String getSignatureNumerique() { return signatureNumerique; }
+    public void setSignatureNumerique(String signatureNumerique) { this.signatureNumerique = signatureNumerique; }
+    
+    public String getJetonTimestamp() { return jetonTimestamp; }
+    public void setJetonTimestamp(String jetonTimestamp) { this.jetonTimestamp = jetonTimestamp; }
+    
+    public LocalDateTime getDateHorodatage() { return dateHorodatage; }
+    public void setDateHorodatage(LocalDateTime dateHorodatage) { this.dateHorodatage = dateHorodatage; }
+    
+    public StatutDocument getStatut() { return statut; }
+    public void setStatut(StatutDocument statut) { this.statut = statut; }
+    
+    public LocalDateTime getDateCreation() { return dateCreation; }
+    public void setDateCreation(LocalDateTime dateCreation) { this.dateCreation = dateCreation; }
+    
+    public String getHashDocument() { return hashDocument; }
+    public void setHashDocument(String hashDocument) { this.hashDocument = hashDocument; }
+    
+    public Utilisateur getProprietaire() { return proprietaire; }
+    public void setProprietaire(Utilisateur proprietaire) { this.proprietaire = proprietaire; }
+    
+    public Utilisateur getSignataire() { return signataire; }
+    public void setSignataire(Utilisateur signataire) { this.signataire = signataire; }
 }
